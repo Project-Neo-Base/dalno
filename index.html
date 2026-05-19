@@ -1434,17 +1434,25 @@ function importIcalUrl(channel, room, silent){
   startAutoRefresh();
   var st = document.getElementById('cfg-status');
   if(st){ st.style.color='#888'; st.textContent='가져오는 중...'; }
-  fetch(url)
-    .then(function(r){ return r.text(); })
-    .then(function(txt){ parseAndSaveIcal(txt, channel, room); updateLastTime(); })
-    .catch(function(){
-      fetch('https://corsproxy.io/?'+encodeURIComponent(url))
-        .then(function(r){ return r.text(); })
-        .then(function(txt){ parseAndSaveIcal(txt, channel, room); updateLastTime(); })
-        .catch(function(){
-          if(st){ st.style.color='#cf6679'; st.textContent='가져오기 실패. URL을 확인해주세요.'; }
-        });
-    });
+  function tryFetch(urls, idx){
+    if(idx >= urls.length){
+      if(st){ st.style.color='#cf6679'; st.textContent='가져오기 실패. URL을 확인해주세요.'; }
+      return;
+    }
+    fetch(urls[idx])
+      .then(function(r){ if(!r.ok) throw new Error('status '+r.status); return r.text(); })
+      .then(function(txt){
+        if(txt.indexOf('BEGIN:VCALENDAR') === -1) throw new Error('not ical');
+        parseAndSaveIcal(txt, channel, room); updateLastTime();
+      })
+      .catch(function(){ tryFetch(urls, idx+1); });
+  }
+  tryFetch([
+    url,
+    'https://corsproxy.io/?'+encodeURIComponent(url),
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(url),
+    'https://thingproxy.freeboard.io/fetch/'+url
+  ], 0);
 }
 
 function updateLastTime(){
