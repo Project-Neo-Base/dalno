@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="달과노니는집">
+<meta name="theme-color" content="#1a1a1a">
+<link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;달과노니는집&quot;,&quot;short_name&quot;:&quot;달노&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#1a1a1a&quot;,&quot;theme_color&quot;:&quot;#1a1a1a&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;https://raw.githubusercontent.com/Project-Neo-Base/dalno/main/icon.png&quot;,&quot;sizes&quot;:&quot;192x192&quot;,&quot;type&quot;:&quot;image/png&quot;}]}">
 <title>Stay Dalno Booking Calendar</title>
 <style>
 :root { color-scheme: dark; }
@@ -10,7 +15,7 @@
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;
   background:#1a1a1a; color:#e8e8e8;
-  max-width:360px; margin:0 auto;
+  max-width:100%; margin:0 auto;
   height:100vh; height:-webkit-fill-available;
   display:flex; flex-direction:column;
   overflow:hidden;
@@ -92,10 +97,10 @@ header{
 }
 .dcell{
   border-right:1px solid #252525;
-  padding:5px 2px 3px;
-  text-align:center;
+  padding:4px 2px 3px 4px;
+  text-align:left;
   cursor:pointer;
-  min-height:34px;
+  min-height:46px;
   -webkit-tap-highlight-color:transparent;
   position:relative;
 }
@@ -105,9 +110,9 @@ header{
 /* ── Date number ── */
 .dnum{
   display:inline-block;
-  font-size:13px; font-weight:500;
-  width:24px; height:24px;
-  line-height:24px; text-align:center;
+  font-size:14px; font-weight:500;
+  width:26px; height:26px;
+  line-height:26px; text-align:center;
   border-radius:50%;
   color:#d8d8d8;
 }
@@ -127,8 +132,8 @@ header{
 /* ── Bars ── */
 .week-bars{ position:relative; overflow:hidden; }
 .bar{
-  position:absolute; height:15px; border-radius:3px;
-  font-size:9px; line-height:15px;
+  position:absolute; height:17px; border-radius:3px;
+  font-size:11px; line-height:17px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   padding:0 4px; color:#fff; cursor:pointer;
   -webkit-tap-highlight-color:transparent;
@@ -137,8 +142,8 @@ header{
 
 /* ── 컴팩트 모드 ── */
 .cal-wrap.compact{ max-height:220px !important; }
-.compact .dcell{ height:22px !important; min-height:22px !important; padding:2px 1px 0 !important; overflow:hidden; }
-.compact .dnum{ font-size:11px !important; width:18px !important; height:18px !important; line-height:18px !important; }
+.compact .dcell{ height:24px !important; min-height:24px !important; padding:2px 1px 0 2px !important; overflow:hidden; }
+.compact .dnum{ font-size:11px !important; width:20px !important; height:20px !important; line-height:20px !important; }
 .compact .week-bars{ max-height:4px !important; overflow:hidden !important; }
 .compact .bar{ height:4px !important; top:0 !important; border-radius:1px !important; padding:0 !important; }
 .compact .yr-bar{ padding:2px 0 !important; font-size:10px !important; }
@@ -169,6 +174,41 @@ header{
   background:#3a3a3a; margin:10px auto 12px;
 }
 
+/* ── 통계 하단 서랍 ── */
+#stats-sheet{
+  position:fixed; bottom:0; left:0; right:0; z-index:85;
+  background:#1c1c1c;
+  border-top:1.5px solid #2D5016;
+  transform:translateY(calc(100% - 48px));
+  transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  max-height:72vh;
+  display:flex; flex-direction:column;
+}
+#stats-sheet.open{
+  transform:translateY(0);
+  overflow-y:auto;
+}
+.stats-toggle{
+  height:48px; display:flex; align-items:center;
+  padding:0 16px; cursor:pointer; gap:8px; flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;
+}
+.stats-drag-bar{
+  width:36px; height:4px; border-radius:2px;
+  background:#3a3a3a; flex-shrink:0;
+}
+#stats-mo-lbl{
+  font-size:12px; font-weight:700; color:#6a9a40; flex:1;
+  letter-spacing:.3px;
+}
+#stats-arrow-icon{
+  font-size:10px; color:#555;
+  transition:transform 0.3s ease;
+  display:inline-block;
+}
+#stats-sheet.open #stats-arrow-icon{ transform:rotate(180deg); }
+#stats-body{ padding:4px 0 20px; }
+
 /* ── Bottom ── */
 .spacer{ display:none; }
 .btn-block-go{
@@ -187,7 +227,7 @@ header{
 }
 .overlay.open{ display:flex; }
 .sheet{
-  background:#212121; width:100%; max-width:360px;
+  background:#212121; width:100%; max-width:100%;
   border-radius:20px 20px 0 0;
   max-height:88vh; overflow-y:auto;
   padding:0 16px 40px;
@@ -411,7 +451,7 @@ textarea.fi{ resize:none; min-height:50px; }
 .btn-naver-block:active{ background:#1e1e1e; color:#6a9a40; border-color:#3a6020; }
 /* ── FAB ── */
 .fab{
-  position:fixed; bottom:24px; right:calc(50% - 166px);
+  position:fixed; bottom:60px; right:16px;
   width:52px; height:52px; border-radius:50%;
   background:#2D5016; border:none;
   color:#c8e6a0; font-size:28px; line-height:1;
@@ -499,6 +539,16 @@ textarea.fi{ resize:none; min-height:50px; }
 <div id="day-panel">
   <div class="drag-handle"></div>
   <div class="day-panel-inner" id="day-panel-inner"></div>
+</div>
+
+<!-- 통계 하단 서랍 -->
+<div id="stats-sheet">
+  <div class="stats-toggle" onclick="toggleStats()">
+    <div class="stats-drag-bar"></div>
+    <span id="stats-mo-lbl">예약 현황</span>
+    <span id="stats-arrow-icon">▲</span>
+  </div>
+  <div id="stats-body"></div>
 </div>
 
 <div class="spacer"></div>
@@ -872,7 +922,7 @@ function buildBars(container, wStart, wEnd){
     it.lane = l;
   }
 
-  var H=15, G=2, P=2;
+  var H=17, G=2, P=2;
   var maxL = -1;
   for(var k = 0; k < items.length; k++) if(items[k].lane > maxL) maxL = items[k].lane;
   container.style.height = maxL >= 0 ? (P + (maxL+1)*(H+G)) + 'px' : '3px';
@@ -984,7 +1034,6 @@ function closeDay(){
   cw.style.maxHeight = calFullH + 'px';
   document.getElementById('day-panel').classList.remove('open');
   render();
-  renderStats();
 }
 
 function renderStats(){
@@ -1020,7 +1069,6 @@ function renderStats(){
   });
 
   var html = '<div class="stat-wrap">'
-           + '<div class="stat-title">' + yr + '년 ' + mo + '월 예약 현황</div>'
            + '<table class="stat-table">'
            + '<thead><tr><th></th><th>1층</th><th>2층</th><th>금액</th></tr></thead><tbody>';
   channels.forEach(function(ch){
@@ -1036,8 +1084,12 @@ function renderStats(){
         + '<td>'+(totIncome?totIncome.toLocaleString():'—')+'</td>'
         + '</tr></tbody></table></div>';
 
-  document.getElementById('day-panel-inner').innerHTML = html;
-  document.getElementById('day-panel').classList.add('open');
+  document.getElementById('stats-body').innerHTML = html;
+  document.getElementById('stats-mo-lbl').textContent = yr + '년 ' + mo + '월 예약현황';
+}
+
+function toggleStats(){
+  document.getElementById('stats-sheet').classList.toggle('open');
 }
 
 // ── 데이 패널 스와이프 다운 → 닫기 ────────────────────────────────────────────
@@ -1401,6 +1453,10 @@ function parseAndSaveIcal(txt, channel, room){
     if(!dtstart || !dtend) continue;
     var ci = dtstart.slice(0,4)+'-'+dtstart.slice(4,6)+'-'+dtstart.slice(6,8);
     var co = dtend.slice(0,4)+'-'+dtend.slice(4,6)+'-'+dtend.slice(6,8);
+    // "Not available", "CLOSED", 빈 이름 → 채널명으로 대체
+    var lowerSum = summary.toLowerCase();
+    var cleanName = (!summary || lowerSum.indexOf('not available')!==-1 || lowerSum==='closed' || lowerSum.indexOf('airbnb')===0)
+      ? channel : summary;
     var dup = false;
     for(var j=0;j<data.length;j++){
       if(data[j].channel===channel && data[j].checkin===ci && data[j].checkout===co){ dup=true; break; }
@@ -1408,7 +1464,7 @@ function parseAndSaveIcal(txt, channel, room){
     if(!dup){
       var newIcal={id:'ic'+Date.now()+'_'+i, type:'booking', room:room||'1층',
         channel:channel, checkin:ci, checkout:co,
-        guestName:summary||channel, adults:2, children:0,
+        guestName:cleanName, adults:2, children:0,
         phone:'', amount:'', memo:'', userMemo:''};
       data.push(newIcal);
       upsertOne(newIcal);
@@ -1527,7 +1583,7 @@ function fmtD(d){
     loadFromSupabase(function(){ render(); renderStats(); });
     // 30초마다 폴링 (두 번째 사용자 변경사항 반영)
     setInterval(function(){
-      loadFromSupabase(function(){ render(); if(!selDate) renderStats(); });
+      loadFromSupabase(function(){ render(); renderStats(); });
     }, 30000);
   }
   if(document.readyState==='loading'){
