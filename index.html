@@ -477,6 +477,38 @@ textarea.fi{ resize:none; min-height:50px; }
   -webkit-tap-highlight-color:transparent;
 }
 .fab:active{ background:#3a6520; transform:scale(.93); }
+.fab-paste{
+  position:fixed; bottom:120px; right:16px;
+  width:46px; height:46px; border-radius:50%;
+  background:#1a3a2a; border:1.5px solid #2D5016;
+  color:#c8e6a0; font-size:20px; line-height:1;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);
+  cursor:pointer; z-index:90;
+  display:flex; align-items:center; justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+}
+.fab-paste:active{ background:#2D5016; transform:scale(.93); }
+/* 붙여넣기 파서 */
+#paste-modal{ max-width:480px; }
+.paste-textarea{
+  width:100%; min-height:160px; background:#111; border:1px solid #2D5016;
+  color:#e0e0e0; border-radius:8px; padding:12px; font-size:13px;
+  resize:vertical; box-sizing:border-box; margin-bottom:10px; line-height:1.6;
+}
+.parse-preview{
+  background:#0f1f0f; border:1px solid #2D5016; border-radius:8px;
+  padding:14px; margin-bottom:12px; display:none;
+}
+.parse-row{ display:flex; justify-content:space-between; padding:5px 0;
+  border-bottom:1px solid #1a2a1a; font-size:13px; }
+.parse-row:last-child{ border-bottom:none; }
+.parse-lbl{ color:#888; }
+.parse-val{ color:#e0e0e0; font-weight:600; text-align:right; max-width:60%; }
+.parse-error{ color:#cf6679; font-size:13px; padding:8px 0; }
+.parse-channel-badge{
+  display:inline-block; padding:3px 10px; border-radius:20px;
+  font-size:12px; font-weight:700; margin-bottom:10px;
+}
 /* 폼 헤더 */
 .sh-head-form{ display:flex; align-items:center; gap:10px; margin-bottom:22px; }
 .btn-back{
@@ -569,6 +601,35 @@ textarea.fi{ resize:none; min-height:50px; }
 
 <div class="spacer"></div>
 <button class="fab" onclick="openAdd()">+</button>
+<button class="fab-paste" onclick="openPaste()" title="문자/이메일 붙여넣기">📋</button>
+
+<!-- 붙여넣기 파서 -->
+<div class="overlay" id="ov-paste" onclick="closeOv('ov-paste')">
+  <div class="sheet" id="paste-modal" onclick="event.stopPropagation()">
+    <div class="sh-head">
+      <span>📋 예약 붙여넣기</span>
+      <button class="sh-close" onclick="closeOv('ov-paste')">✕</button>
+    </div>
+    <p style="font-size:12px;color:#888;margin:0 0 10px">에어비앤비·부킹닷컴·네이버 예약 확인 문자나 이메일 내용을 통째로 붙여넣으세요.</p>
+    <textarea class="paste-textarea" id="paste-input" placeholder="여기에 붙여넣기..."></textarea>
+    <button class="btn-submit" onclick="doParse()" style="margin-bottom:12px">자동 파싱</button>
+    <div class="parse-preview" id="parse-preview">
+      <div id="parse-channel-area"></div>
+      <div id="parse-rows"></div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <div style="flex:1">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">객실</label>
+          <select id="parse-room-sel" style="width:100%;background:#1a1a1a;color:#e0e0e0;border:1px solid #2D5016;border-radius:6px;padding:8px;font-size:14px">
+            <option value="2층">2층 (프리미엄)</option>
+            <option value="1층">1층 (위드책쾌)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="parse-error" id="parse-error" style="display:none"></div>
+    <button class="btn-submit" id="parse-confirm-btn" onclick="confirmParse()" style="display:none;background:#1a5a30">✅ 달력에 등록</button>
+  </div>
+</div>
 
 <!-- 설정 -->
 <div class="overlay" id="ov-cfg" onclick="closeOv('ov-cfg')">
@@ -583,22 +644,30 @@ textarea.fi{ resize:none; min-height:50px; }
       <div class="cfg-url-row">
         <span class="cfg-ch" style="background:#0f3070;white-space:nowrap">부킹 1층</span>
         <input class="cfg-url-input" id="url-booking-1" placeholder="iCal 주소 붙여넣기" type="url">
-        <button class="cfg-file-btn" onclick="importIcalUrl('부킹닷컴','1층')">가져오기</button>
+        <button class="cfg-file-btn" onclick="openIcalUrl('booking-1')" title="새 탭에서 열기">🔗</button>
+        <button class="cfg-file-btn" onclick="importIcalUrl('부킹닷컴','1층')">URL</button>
+        <label class="cfg-file-btn" title="파일로 가져오기" style="cursor:pointer">📂<input type="file" accept=".ics" style="display:none" onchange="importIcalFile(event,'부킹닷컴','1층')"></label>
       </div>
       <div class="cfg-url-row">
         <span class="cfg-ch" style="background:#0f3070;white-space:nowrap">부킹 2층</span>
         <input class="cfg-url-input" id="url-booking-2" placeholder="iCal 주소 붙여넣기" type="url">
-        <button class="cfg-file-btn" onclick="importIcalUrl('부킹닷컴','2층')">가져오기</button>
+        <button class="cfg-file-btn" onclick="openIcalUrl('booking-2')" title="새 탭에서 열기">🔗</button>
+        <button class="cfg-file-btn" onclick="importIcalUrl('부킹닷컴','2층')">URL</button>
+        <label class="cfg-file-btn" title="파일로 가져오기" style="cursor:pointer">📂<input type="file" accept=".ics" style="display:none" onchange="importIcalFile(event,'부킹닷컴','2층')"></label>
       </div>
       <div class="cfg-url-row">
         <span class="cfg-ch" style="background:#821a2c;white-space:nowrap">에어비 1층</span>
         <input class="cfg-url-input" id="url-airbnb-1" placeholder="iCal 주소 붙여넣기" type="url">
-        <button class="cfg-file-btn" onclick="importIcalUrl('에어비앤비','1층')">가져오기</button>
+        <button class="cfg-file-btn" onclick="openIcalUrl('airbnb-1')" title="새 탭에서 열기">🔗</button>
+        <button class="cfg-file-btn" onclick="importIcalUrl('에어비앤비','1층')">URL</button>
+        <label class="cfg-file-btn" title="파일로 가져오기" style="cursor:pointer">📂<input type="file" accept=".ics" style="display:none" onchange="importIcalFile(event,'에어비앤비','1층')"></label>
       </div>
       <div class="cfg-url-row">
         <span class="cfg-ch" style="background:#821a2c;white-space:nowrap">에어비 2층</span>
         <input class="cfg-url-input" id="url-airbnb-2" placeholder="iCal 주소 붙여넣기" type="url">
-        <button class="cfg-file-btn" onclick="importIcalUrl('에어비앤비','2층')">가져오기</button>
+        <button class="cfg-file-btn" onclick="openIcalUrl('airbnb-2')" title="새 탭에서 열기">🔗</button>
+        <button class="cfg-file-btn" onclick="importIcalUrl('에어비앤비','2층')">URL</button>
+        <label class="cfg-file-btn" title="파일로 가져오기" style="cursor:pointer">📂<input type="file" accept=".ics" style="display:none" onchange="importIcalFile(event,'에어비앤비','2층')"></label>
       </div>
       <div class="cfg-import-status" id="cfg-status"></div>
     </div>
@@ -608,11 +677,18 @@ textarea.fi{ resize:none; min-height:50px; }
         <input class="cfg-url-input" id="gist-token-input" placeholder="GitHub Personal Access Token" type="password">
         <button class="cfg-file-btn" onclick="saveGistToken()">저장</button>
       </div>
-      <div style="margin-bottom:8px">
-        <div style="font-size:10px;color:#555;margin-bottom:5px">Airbnb / 부킹닷컴 구독 주소</div>
+      <div style="margin-bottom:6px">
+        <div style="font-size:10px;color:#555;margin-bottom:4px">🏯 2층 프리미엄 구독 주소</div>
         <div style="display:flex;gap:6px;align-items:center">
-          <input class="cfg-url-input" id="gist-url-disp" readonly style="font-size:10px;color:#666">
-          <button class="cfg-file-btn" onclick="copyGistUrl()">복사</button>
+          <input class="cfg-url-input" id="gist-url-2f" readonly style="font-size:10px;color:#666">
+          <button class="cfg-file-btn" onclick="copyGistUrl('2f')">복사</button>
+        </div>
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:10px;color:#555;margin-bottom:4px">📚 1층 위드책쾌 구독 주소</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input class="cfg-url-input" id="gist-url-1f" readonly style="font-size:10px;color:#666">
+          <button class="cfg-file-btn" onclick="copyGistUrl('1f')">복사</button>
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:6px">
@@ -620,6 +696,11 @@ textarea.fi{ resize:none; min-height:50px; }
         <button class="cfg-file-btn" onclick="exportIcal('download')" style="flex:1">파일 다운로드</button>
       </div>
       <div class="cfg-import-status" id="gist-status"></div>
+    </div>
+    <div class="cfg-section">
+      <div class="cfg-lbl" style="color:#cf6679">⚠ 데이터 관리</div>
+      <button class="cfg-file-btn" onclick="clearAllData()" style="width:100%;background:#2a1010;border-color:#cf6679;color:#cf6679">전체 데이터 초기화 (Supabase + 로컬)</button>
+      <div class="cfg-import-status" id="clear-status"></div>
     </div>
   </div>
 </div>
@@ -1172,15 +1253,20 @@ function openDet(id){
           + '</div>';
   } else {
     var nights = Math.round((new Date(b.checkout)-new Date(b.checkin))/86400000);
-    var pax    = b.children>0?'성인 '+b.adults+', 아동 '+b.children+'명':'성인 '+b.adults+'명';
+    var pax = b.adults > 0
+      ? (b.children > 0 ? '성인 '+b.adults+', 아동 '+b.children+'명' : '성인 '+b.adults+'명')
+      : (b.children > 0 ? '아동 '+b.children+'명' : '');
+    // 이름이 예약코드 형태인지 판단 (대문자+숫자 8자 이상)
+    var isCode = /^[A-Z0-9]{6,}$/.test(b.guestName||'');
+    var nameLabel = isCode ? '예약코드' : '예약자';
     html += '<div class="det-card">'
           + '<span class="det-card-ch" style="background:'+col+'">'+b.channel+'</span>'
-          + '<div class="det-card-name">'+b.guestName+'</div>'
+          + '<div class="det-card-name" style="'+(isCode?'font-size:15px;letter-spacing:1px;color:#aaa':'')+'">'+b.guestName+'</div>'
           + '<div class="det-card-room">'+b.room+'</div>'
           + '<div class="det-card-row"><span>체크인</span><span>'+b.checkin+'</span></div>'
           + '<div class="det-card-row"><span>체크아웃</span><span>'+b.checkout+'</span></div>'
           + '<div class="det-card-row"><span>숙박</span><span>'+nights+'박</span></div>'
-          + '<div class="det-card-row"><span>인원</span><span>'+pax+'</span></div>'
+          + (pax?'<div class="det-card-row"><span>인원</span><span>'+pax+'</span></div>':'')
           + (b.phone?'<div class="det-card-row"><span>연락처</span><span>'+b.phone+'</span></div>':'')
           + (b.amount?'<div class="det-amount">'+Number(b.amount).toLocaleString()+'원</div>':'')
           + '</div>';
@@ -1377,6 +1463,32 @@ function previewBar(){
   if(el){ el.textContent=room+' '+nm+' '+pax; el.style.background=CH_COLOR[ch]||'#555'; }
 }
 
+function clearAllData(){
+  if(!confirm('모든 예약 데이터를 삭제합니다.\nSupabase + 로컬 저장소 전체가 초기화됩니다.\n계속할까요?')) return;
+  var st = document.getElementById('clear-status');
+  if(st){ st.style.color='#888'; st.textContent='삭제 중...'; }
+  // Supabase 전체 삭제
+  fetch(SUPA_URL+'/rest/v1/bookings?id=not.is.null',{
+    method:'DELETE', headers:supaH()
+  }).then(function(){
+    // localStorage 초기화
+    localStorage.removeItem('dalno_v1');
+    localStorage.removeItem('dalno_ical');
+    // 메모리 초기화
+    data = [];
+    icalUrls = {'booking-1':'','booking-2':'','airbnb-1':'','airbnb-2':''};
+    if(autoRefreshTimer){ clearInterval(autoRefreshTimer); autoRefreshTimer=null; }
+    // 입력칸 비우기
+    ['booking-1','booking-2','airbnb-1','airbnb-2'].forEach(function(k){
+      var el=document.getElementById('url-'+k); if(el) el.value='';
+    });
+    render(); renderStats();
+    if(st){ st.style.color='#5a9030'; st.textContent='초기화 완료!'; }
+  }).catch(function(){
+    if(st){ st.style.color='#cf6679'; st.textContent='삭제 실패. 네트워크를 확인해주세요.'; }
+  });
+}
+
 function openNaverBlock(){
   window.open('https://new.smartplace.naver.com/','_blank');
 }
@@ -1389,13 +1501,17 @@ function save(){
 
 function syncToGist(silent){
   if(!gistToken || !gistId) return;
-  var ics = generateIcs();
+  var ics2f = generateIcs('2층');
+  var ics1f = generateIcs('1층');
   var st = document.getElementById('gist-status');
   if(st && !silent){ st.style.color='#888'; st.textContent='동기화 중...'; }
   fetch('https://api.github.com/gists/' + gistId, {
     method: 'PATCH',
     headers: { 'Authorization': 'Bearer ' + gistToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ files: { 'dalno.ics': { content: ics } } })
+    body: JSON.stringify({ files: {
+      'dalno-2f.ics': { content: ics2f },
+      'dalno-1f.ics': { content: ics1f }
+    }})
   }).then(function(r){
     if(r.ok && st && !silent){ st.style.color='#5a9030'; st.textContent='동기화 완료 ✓'; }
     else if(!r.ok && st && !silent){ st.style.color='#cf6679'; st.textContent='동기화 실패. 토큰을 확인해주세요.'; }
@@ -1414,17 +1530,19 @@ function saveGistToken(){
   syncToGist(false);
 }
 
-function copyGistUrl(){
-  var url = 'https://gist.githubusercontent.com/Project-Neo-Base/' + gistId + '/raw/dalno.ics';
+function copyGistUrl(floor){
+  var file = (floor === '1f') ? 'dalno-1f.ics' : 'dalno-2f.ics';
+  var url = 'https://gist.githubusercontent.com/Project-Neo-Base/' + gistId + '/raw/' + file;
   navigator.clipboard.writeText(url).then(function(){
     var st = document.getElementById('gist-status');
-    if(st){ st.style.color='#5a9030'; st.textContent='주소가 복사됐어요!'; }
+    if(st){ st.style.color='#5a9030'; st.textContent='주소가 복사됐어요! (' + (floor==='1f'?'1층':'2층') + ')'; }
   });
 }
 
-function generateIcs(){
+function generateIcs(room){
   var lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//StayDalno//KR','CALSCALE:GREGORIAN'];
   data.forEach(function(b){
+    if(room && b.room !== room) return;
     var ci=b.checkin.replace(/-/g,''), co=b.checkout.replace(/-/g,'');
     lines.push('BEGIN:VEVENT');
     lines.push('UID:'+b.id+'@staydalno');
@@ -1458,8 +1576,12 @@ function parseAndSaveIcal(txt, channel, room){
 
     var lowerSum = summary.toLowerCase();
 
-    // "CLOSED" = 다른 채널에서 막은 날짜 → 스킵 (우리 앱엔 원본 채널 데이터가 있음)
-    if(lowerSum === 'closed' || lowerSum === 'unavailable') continue;
+    // 실제 예약건만 가져옴. 수동차단/크로스차단은 모두 스킵
+    if(lowerSum === 'closed'
+    || lowerSum === 'unavailable'
+    || lowerSum.indexOf('not available') !== -1
+    || lowerSum === 'blocked'
+    || lowerSum === '') continue;
 
     var ci = dtstart.slice(0,4)+'-'+dtstart.slice(4,6)+'-'+dtstart.slice(6,8);
     var co = dtend.slice(0,4)+'-'+dtend.slice(4,6)+'-'+dtend.slice(6,8);
@@ -1475,21 +1597,27 @@ function parseAndSaveIcal(txt, channel, room){
     // Booking.com "Guest name: ..."
     if(!descName){ m = desc.match(/(?:Guest name|Guest):\s*(.+)/i); if(m) descName = m[1].trim(); }
 
-    // 전화번호
+    // 예약코드 (Airbnb URL 끝 코드: /reservations/details/XXXXXXXX)
+    var descCode = '';
+    m = desc.match(/reservations\/details\/([A-Z0-9]+)/i); if(m) descCode = m[1].trim();
+    // Booking.com 예약번호
+    if(!descCode){ m = desc.match(/(?:Reservation\s+code|예약번호)[:\s]+([A-Z0-9\-]+)/i); if(m) descCode = m[1].trim(); }
+
+    // 전화번호: Airbnb "Phone Number (Last 4 Digits): 9747"
     var descPhone = '';
-    m = desc.match(/PHONE:\s*(.+)/i); if(m) descPhone = m[1].trim();
+    m = desc.match(/Phone Number[^:]*:\s*(\d+)/i); if(m) descPhone = '끝 '+m[1].trim();
+    if(!descPhone){ m = desc.match(/PHONE:\s*(.+)/i); if(m) descPhone = m[1].trim(); }
     if(!descPhone){ m = desc.match(/Phone:\s*(.+)/i); if(m) descPhone = m[1].trim(); }
 
     // 인원
-    var descAdults = 2;
-    m = desc.match(/ADULT[S]?:\s*(\d+)/i); if(m) descAdults = Math.max(1, parseInt(m[1])||2);
+    var descAdults = 0; // 0이면 표시 안 함
+    m = desc.match(/ADULT[S]?:\s*(\d+)/i); if(m) descAdults = Math.max(1, parseInt(m[1])||1);
     var descChildren = 0;
     m = desc.match(/CHILD(?:REN)?:\s*(\d+)/i); if(m) descChildren = parseInt(m[1])||0;
 
-    // 최종 이름 결정: DESCRIPTION 이름 > summary(실명인 경우) > 채널명
-    var isAnon = !summary || lowerSum.indexOf('not available')!==-1
-              || lowerSum==='reserved' || lowerSum.indexOf('airbnb')===0;
-    var finalName = descName || (!isAnon ? summary : '') || channel;
+    // 최종 이름 결정: DESCRIPTION 실명 > summary 실명 > 예약코드 > 채널명
+    var isAnon = lowerSum === 'reserved' || lowerSum.indexOf('airbnb') === 0;
+    var finalName = descName || (!isAnon ? summary : '') || (descCode ? descCode : channel);
 
     var newIcal = {
       id:'ic'+Date.now()+'_'+i, type:'booking', room:room||'1층',
@@ -1508,37 +1636,308 @@ function parseAndSaveIcal(txt, channel, room){
   st.textContent = added>0 ? added+'건 동기화됐어요.' : '가져온 일정이 없어요.';
 }
 
+// ── 붙여넣기 파서 ──────────────────────────────────────────────────────────────
+var _parsedResult = null;
+var _multiResults = null;
+
+function isDuplicate(r){
+  return data.some(function(b){
+    return b.channel === r.channel
+        && b.checkin  === r.checkin
+        && b.checkout === r.checkout
+        && b.room     === r.room;
+  });
+}
+
+function openPaste(){
+  document.getElementById('paste-input').value = '';
+  document.getElementById('parse-preview').style.display = 'none';
+  document.getElementById('parse-error').style.display = 'none';
+  document.getElementById('parse-confirm-btn').style.display = 'none';
+  _parsedResult = null;
+  openOv('ov-paste');
+  setTimeout(function(){ document.getElementById('paste-input').focus(); }, 300);
+}
+
+function makeYMD(month, day){
+  var yr = new Date().getFullYear();
+  var d = new Date(yr, month-1, day);
+  if(d < new Date()){ d = new Date(yr+1, month-1, day); yr++; }
+  return yr+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+}
+
+var EN_MON = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+
+function doParse(){
+  var txt = document.getElementById('paste-input').value.trim();
+  if(!txt){ return; }
+  var errEl = document.getElementById('parse-error');
+  errEl.style.display = 'none';
+  var r = {channel:'',guestName:'',checkin:'',checkout:'',adults:0,children:0,room:'',phone:'',amount:'',code:''};
+  var m;
+
+  // ── 플랫폼 감지 ──
+  if(txt.indexOf('에어비앤비') !== -1 || txt.indexOf('Airbnb') !== -1 || txt.indexOf('airbnb') !== -1){
+    r.channel = '에어비앤비';
+    // 이름: 대문자로 시작하는 "First Last" 패턴 (alt 등 노이즈 제거)
+    m = txt.match(/\n([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\n+본인 인증/);
+    if(m) r.guestName = m[1].trim();
+    if(!r.guestName){ m = txt.match(/\n([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\n/); if(m) r.guestName = m[1].trim(); }
+    if(!r.guestName){ m = txt.match(/([A-Za-z가-힣][A-Za-z가-힣\s]{1,20}?)\s*님이\s*\d+월/); if(m) r.guestName = m[1].trim(); }
+    // 체크인
+    m = txt.match(/체크인[\s\S]{0,20}?(\d+)월\s*(\d+)일/);
+    if(m) r.checkin = makeYMD(parseInt(m[1]), parseInt(m[2]));
+    // 체크아웃
+    m = txt.match(/체크아웃[\s\S]{0,20}?(\d+)월\s*(\d+)일/);
+    if(m) r.checkout = makeYMD(parseInt(m[1]), parseInt(m[2]));
+    // 인원
+    m = txt.match(/게스트\s*\n+\s*성인\s*(\d+)명/); if(m) r.adults = parseInt(m[1]);
+    if(!r.adults){ m = txt.match(/성인\s*(\d+)명/); if(m) r.adults = parseInt(m[1]); }
+    m = txt.match(/어린이\s*(\d+)명/); if(m) r.children = parseInt(m[1]);
+    // 예약코드
+    m = txt.match(/예약\s*코드\s*\n+\s*([A-Z0-9]{6,})/); if(m) r.code = m[1];
+    // 호스트 수입
+    m = txt.match(/호스트 수입\s*\n+\s*₩([\d,]+)/); if(m) r.amount = m[1].replace(/,/g,'');
+    // 객실
+    if(txt.indexOf('프리미엄') !== -1) r.room = '2층';
+    else if(/위드책쾌|위드팩|워드팩/.test(txt)) r.room = '1층';
+
+  } else if(txt.indexOf('Booking.com') !== -1 || txt.indexOf('부킹') !== -1 || /신규:\s*\d{6,}/.test(txt)){
+    r.channel = '부킹닷컴';
+    // 예약번호
+    m = txt.match(/(?:신규|취소|변경):\s*(\d{6,})/); if(m) r.code = m[1];
+    // 날짜: "Jun 05 - Jun 06 2026" 또는 "Jun 05 - Jun 06"
+    m = txt.match(/([A-Za-z]{3})\s+(\d{1,2})\s*[-~]\s*([A-Za-z]{3})\s+(\d{1,2})\s*(\d{4})?/);
+    if(m){
+      var mo1=EN_MON[(m[1]||'').toLowerCase()], mo2=EN_MON[(m[3]||'').toLowerCase()];
+      var yr2 = m[5] ? parseInt(m[5]) : new Date().getFullYear();
+      if(mo1) r.checkin  = yr2+'-'+String(mo1).padStart(2,'0')+'-'+String(parseInt(m[2])).padStart(2,'0');
+      if(mo2) r.checkout = yr2+'-'+String(mo2).padStart(2,'0')+'-'+String(parseInt(m[4])).padStart(2,'0');
+    }
+    // 투숙객 수
+    m = txt.match(/투숙객\s*(\d+)명/); if(m) r.adults = parseInt(m[1]);
+    // 이름 (투숙객 수 다음 줄 — 마지막 줄이어도 매칭)
+    m = txt.match(/투숙객\s*\d+명\s*\n+([가-힣A-Za-z][가-힣A-Za-z\s]{1,30}?)(?:\n|객실|$)/);
+    if(m) r.guestName = m[1].trim();
+    // 객실 유형
+    if(txt.indexOf('프리미엄') !== -1 || /3\s*베드룸/.test(txt)) r.room = '2층';
+    else if(/위드책쾌|위드팩|워드팩/.test(txt) || /2\s*베드룸/.test(txt)) r.room = '1층';
+
+  } else if(txt.indexOf('네이버') !== -1 || txt.indexOf('예약자') !== -1){
+    r.channel = '네이버';
+    // 다중 예약 감지 (예약자 2개 이상)
+    var naverBlocks = txt.split(/(?=(?:확정|취소)\n)/);
+    var multiResults = [];
+    naverBlocks.forEach(function(block){
+      if(!block.trim()) return;
+      if(block.indexOf('결제완료') === -1) return; // 환불/취소 제외
+      var bm, br = {channel:'네이버',guestName:'',checkin:'',checkout:'',adults:0,room:'',phone:'',code:''};
+      bm = block.match(/예약자\s+([가-힣A-Za-z]{2,20}?)(?:대리예약)?\s*\n/); if(bm) br.guestName = bm[1].trim();
+      bm = block.match(/전화번호\s+([\d\-]{9,14})/); if(bm) br.phone = bm[1].trim();
+      bm = block.match(/예약번호\s+(\d{6,})/); if(bm) br.code = bm[1].trim();
+      bm = block.match(/(\d{4})[.\s]+(\d{1,2})[.\s]+(\d{1,2})[^~\n]*~\s*(\d{4})[.\s]+(\d{1,2})[.\s]+(\d{1,2})/);
+      if(bm){
+        br.checkin  = bm[1]+'-'+String(parseInt(bm[2])).padStart(2,'0')+'-'+String(parseInt(bm[3])).padStart(2,'0');
+        br.checkout = bm[4]+'-'+String(parseInt(bm[5])).padStart(2,'0')+'-'+String(parseInt(bm[6])).padStart(2,'0');
+      }
+      // 네이버 인원: 기본 2명 + 성인(추가) N + 미취학아동(추가) N
+      bm = block.match(/성인\s*\(추가\)\s*(\d+)/); br.adults = 2 + (bm ? parseInt(bm[1]) : 0);
+      bm = block.match(/미취학\s*아동\s*\(추가\)\s*(\d+)/); if(bm) br.children = parseInt(bm[1]);
+      if(block.indexOf('프리미엄') !== -1) br.room = '2층';
+      else if(/위드책쾌|위드팩|워드팩/.test(block)) br.room = '1층';
+      if(br.checkin && br.checkout && br.guestName) multiResults.push(br);
+    });
+    if(multiResults.length > 1){
+      // 다중 예약 미리보기
+      _multiResults = multiResults;
+      showMultiPreview(multiResults);
+      return;
+    }
+    // 단일 예약
+    m = txt.match(/예약자\s+([가-힣A-Za-z]{2,20}?)(?:대리예약)?\s*\n/); if(m) r.guestName = m[1].trim();
+    m = txt.match(/전화번호\s+([\d\-]{9,14})/); if(m) r.phone = m[1].trim();
+    m = txt.match(/예약번호\s+(\d{6,})/); if(m) r.code = m[1].trim();
+    m = txt.match(/(\d{4})[.\s]+(\d{1,2})[.\s]+(\d{1,2})[^~\n]*~\s*(\d{4})[.\s]+(\d{1,2})[.\s]+(\d{1,2})/);
+    if(m){
+      r.checkin  = m[1]+'-'+String(parseInt(m[2])).padStart(2,'0')+'-'+String(parseInt(m[3])).padStart(2,'0');
+      r.checkout = m[4]+'-'+String(parseInt(m[5])).padStart(2,'0')+'-'+String(parseInt(m[6])).padStart(2,'0');
+    }
+    // 네이버 인원: 기본 2명 + 성인(추가) N + 미취학아동(추가) N
+    m = txt.match(/성인\s*\(추가\)\s*(\d+)/); r.adults = 2 + (m ? parseInt(m[1]) : 0);
+    m = txt.match(/미취학\s*아동\s*\(추가\)\s*(\d+)/); if(m) r.children = parseInt(m[1]);
+    if(txt.indexOf('프리미엄') !== -1) r.room = '2층';
+    else if(/위드책쾌|위드팩|워드팩/.test(txt)) r.room = '1층';
+  }
+
+  if(!r.channel){
+    errEl.textContent = '플랫폼을 인식하지 못했어요. 에어비앤비·부킹닷컴·네이버 예약 내용인지 확인해주세요.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(!r.checkin || !r.checkout){
+    errEl.textContent = '날짜를 찾지 못했어요. 텍스트에 체크인/체크아웃 날짜가 포함되어 있는지 확인해주세요.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  _parsedResult = r;
+
+  // 미리보기 표시
+  var col = CH_COLOR[r.channel]||'#555';
+  document.getElementById('parse-channel-area').innerHTML =
+    '<span class="parse-channel-badge" style="background:'+col+'">'+r.channel+'</span>';
+  var rows = [
+    ['이름', r.guestName||'(없음 — 직접 입력)'],
+    ['체크인', r.checkin],
+    ['체크아웃', r.checkout],
+    ['숙박', Math.round((new Date(r.checkout)-new Date(r.checkin))/86400000)+'박'],
+    ['인원', r.adults>0?'성인 '+r.adults+'명':'(미확인)'],
+    ['예약번호', r.code||'(없음)'],
+    ['연락처', r.phone||'(없음)'],
+    ['호스트 수입', r.amount?'₩'+Number(r.amount).toLocaleString():'(없음)'],
+  ];
+  document.getElementById('parse-rows').innerHTML = rows.map(function(row){
+    return '<div class="parse-row"><span class="parse-lbl">'+row[0]+'</span><span class="parse-val">'+row[1]+'</span></div>';
+  }).join('');
+  // 객실 셀렉트
+  var sel = document.getElementById('parse-room-sel');
+  if(r.room) sel.value = r.room;
+  document.getElementById('parse-preview').style.display = 'block';
+  document.getElementById('parse-confirm-btn').style.display = 'block';
+}
+
+function showMultiPreview(list){
+  var col = CH_COLOR['네이버']||'#5a9030';
+  document.getElementById('parse-channel-area').innerHTML =
+    '<span class="parse-channel-badge" style="background:'+col+'">네이버</span>' +
+    '<span style="font-size:12px;color:#888;margin-left:8px">확정 '+list.length+'건 (취소/환불 제외)</span>';
+  var html = list.map(function(b, i){
+    return '<div class="parse-row" style="flex-direction:column;align-items:flex-start;gap:2px;padding:8px 0">' +
+      '<div style="display:flex;justify-content:space-between;width:100%">' +
+      '<span style="color:#c8e6a0;font-weight:700">'+(i+1)+'. '+b.guestName+'</span>' +
+      '<span style="font-size:11px;background:'+(b.room==='2층'?'#2D5016':'#1a3a5a')+';padding:2px 7px;border-radius:10px;color:#fff">'+b.room+'</span>' +
+      '</div>' +
+      '<span style="color:#888;font-size:12px">'+b.checkin+' ~ '+b.checkout+(b.adults?' · 성인 '+b.adults+'명':'')+'</span>' +
+      '</div>';
+  }).join('');
+  document.getElementById('parse-rows').innerHTML = html;
+  document.getElementById('parse-room-sel').parentElement.parentElement.style.display = 'none';
+  document.getElementById('parse-preview').style.display = 'block';
+  document.getElementById('parse-confirm-btn').textContent = '✅ 전체 '+list.length+'건 달력에 등록';
+  document.getElementById('parse-confirm-btn').style.display = 'block';
+}
+
+function confirmParse(){
+  // 다중 등록
+  if(_multiResults && _multiResults.length){
+    var firstDate = _multiResults[0].checkin;
+    var skipped = 0;
+    _multiResults.forEach(function(r){
+      if(isDuplicate(r)){ skipped++; return; }
+      var b = {
+        id:'ps'+Date.now()+'_'+Math.random().toString(36).slice(2,6), type:'booking',
+        room:r.room||'1층', channel:'네이버',
+        checkin:r.checkin, checkout:r.checkout,
+        guestName:r.guestName||r.code||'네이버',
+        adults:r.adults||0, children:0,
+        phone:r.phone||'', amount:'',
+        memo:r.code||'', userMemo:''
+      };
+      data.push(b); upsertOne(b);
+    });
+    if(skipped > 0) alert('이미 있는 예약 '+skipped+'건은 건너뜀.');
+    save(); render(); renderStats();
+    _multiResults = null; _parsedResult = null;
+    closeOv('ov-paste');
+    var fd = new Date(firstDate+'T00:00:00');
+    yr = fd.getFullYear(); mo = fd.getMonth()+1; render();
+    return;
+  }
+  if(!_parsedResult) return;
+  var r = _parsedResult;
+  r.room = document.getElementById('parse-room-sel').value;
+  var b = {
+    id:'ps'+Date.now(), type:'booking',
+    room:r.room, channel:r.channel,
+    checkin:r.checkin, checkout:r.checkout,
+    guestName:r.guestName||r.code||r.channel,
+    adults:r.adults||0, children:r.children||0,
+    phone:r.phone||'', amount:r.amount||'',
+    memo:r.code||'', userMemo:''
+  };
+  if(isDuplicate(b)){ alert('이미 등록된 예약이에요. 건너뜀.'); closeOv('ov-paste'); _parsedResult=null; return; }
+  data.push(b); upsertOne(b); save(); render(); renderStats();
+  closeOv('ov-paste');
+  _parsedResult = null;
+  // 등록한 날짜로 이동
+  var d = new Date(r.checkin+'T00:00:00');
+  yr = d.getFullYear(); mo = d.getMonth()+1;
+  render();
+}
+
+function importIcalFile(evt, channel, room){
+  var file = evt.target.files[0];
+  if(!file) return;
+  evt.target.value = ''; // 같은 파일 재선택 허용
+  var st = document.getElementById('cfg-status');
+  if(st){ st.style.color='#888'; st.textContent=file.name+' 읽는 중...'; }
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var txt = e.target.result;
+    if(txt.indexOf('BEGIN:VCALENDAR') === -1){
+      if(st){ st.style.color='#cf6679'; st.textContent='iCal 파일이 아닌 것 같아요.'; }
+      return;
+    }
+    parseAndSaveIcal(txt, channel, room);
+    updateLastTime();
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function openIcalUrl(key){
+  var el = document.getElementById('url-'+key);
+  var url = (el && el.value.trim()) || icalUrls[key] || '';
+  if(!url){ alert('URL을 먼저 입력해주세요.'); return; }
+  window.open(url, '_blank');
+}
+
 function importIcalUrl(channel, room, silent){
   var prefix  = channel==='부킹닷컴' ? 'booking' : 'airbnb';
   var suffix  = room==='2층' ? '2' : '1';
   var inputId = 'url-'+prefix+'-'+suffix;
   var urlKey  = prefix+'-'+suffix;
   var el = document.getElementById(inputId);
-  var url = el ? el.value.trim() : icalUrls[urlKey];
+  // el.value 우선, 비어있으면 저장된 icalUrls 사용
+  var url = (el && el.value.trim()) || icalUrls[urlKey] || '';
   if(!url){ if(!silent) alert('URL을 입력해주세요.'); return; }
+  // input에도 채워주기 (자동 새로고침 시 input이 비어있을 수 있음)
+  if(el && !el.value.trim()) el.value = url;
   icalUrls[urlKey] = url;
   localStorage.setItem('dalno_ical', JSON.stringify(icalUrls));
   startAutoRefresh();
   var st = document.getElementById('cfg-status');
-  if(st){ st.style.color='#888'; st.textContent='가져오는 중...'; }
+  var proxyNames = ['직접연결','corsproxy.io','allorigins.win','corsproxy.net','htmldriven'];
+  if(st && !silent){ st.style.color='#888'; st.textContent='연결 시도 중 (1/5)...'; }
   function tryFetch(urls, idx){
     if(idx >= urls.length){
-      if(st){ st.style.color='#cf6679'; st.textContent='가져오기 실패. URL을 확인해주세요.'; }
+      if(st){ st.style.color='#cf6679'; st.textContent='가져오기 실패 (5개 경로 모두 차단). Airbnb 앱에서 URL을 새로 복사해주세요.'; }
       return;
     }
-    fetch(urls[idx])
+    if(st && !silent){ st.style.color='#888'; st.textContent='연결 시도 중 ('+(idx+1)+'/5) '+proxyNames[idx]+'...'; }
+    fetch(urls[idx], {signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined})
       .then(function(r){ if(!r.ok) throw new Error('status '+r.status); return r.text(); })
       .then(function(txt){
         if(txt.indexOf('BEGIN:VCALENDAR') === -1) throw new Error('not ical');
         parseAndSaveIcal(txt, channel, room); updateLastTime();
       })
-      .catch(function(){ tryFetch(urls, idx+1); });
+      .catch(function(e){ tryFetch(urls, idx+1); });
   }
   tryFetch([
     url,
     'https://corsproxy.io/?'+encodeURIComponent(url),
     'https://api.allorigins.win/raw?url='+encodeURIComponent(url),
-    'https://thingproxy.freeboard.io/fetch/'+url
+    'https://corsproxy.net/?url='+encodeURIComponent(url),
+    'https://api.htmldriven.com/api/v1/cors?url='+encodeURIComponent(url)
   ], 0);
 }
 
@@ -1549,10 +1948,12 @@ function updateLastTime(){
 }
 
 function autoRefreshAll(){
-  if(icalUrls['booking-1']) importIcalUrl('부킹닷컴','1층',true);
-  if(icalUrls['booking-2']) importIcalUrl('부킹닷컴','2층',true);
-  if(icalUrls['airbnb-1'])  importIcalUrl('에어비앤비','1층',true);
-  if(icalUrls['airbnb-2'])  importIcalUrl('에어비앤비','2층',true);
+  // 동시 요청 시 race condition 방지 — 4초 간격으로 순차 실행
+  var delay = 0;
+  if(icalUrls['airbnb-1'])  { setTimeout(function(){ importIcalUrl('에어비앤비','1층',true); }, delay); delay+=4000; }
+  if(icalUrls['airbnb-2'])  { setTimeout(function(){ importIcalUrl('에어비앤비','2층',true); }, delay); delay+=4000; }
+  if(icalUrls['booking-1']) { setTimeout(function(){ importIcalUrl('부킹닷컴','1층',true);   }, delay); delay+=4000; }
+  if(icalUrls['booking-2']) { setTimeout(function(){ importIcalUrl('부킹닷컴','2층',true);   }, delay); }
 }
 
 function startAutoRefresh(){
@@ -1603,8 +2004,10 @@ function fmtD(d){
     });
     // Gist 설정 복원
     if(gistToken){ var gt=document.getElementById('gist-token-input'); if(gt) gt.value=gistToken; }
-    var gu=document.getElementById('gist-url-disp');
-    if(gu) gu.value='https://gist.githubusercontent.com/Project-Neo-Base/'+gistId+'/raw/dalno.ics';
+    var gu2f=document.getElementById('gist-url-2f');
+    if(gu2f) gu2f.value='https://gist.githubusercontent.com/Project-Neo-Base/'+gistId+'/raw/dalno-2f.ics';
+    var gu1f=document.getElementById('gist-url-1f');
+    if(gu1f) gu1f.value='https://gist.githubusercontent.com/Project-Neo-Base/'+gistId+'/raw/dalno-1f.ics';
     // URL 있으면 시작 시 즉시 fetch + 30분 자동 갱신
     if(icalUrls['booking-1']||icalUrls['booking-2']||icalUrls['airbnb-1']||icalUrls['airbnb-2']){
       autoRefreshAll();
