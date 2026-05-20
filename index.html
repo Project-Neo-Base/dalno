@@ -12,11 +12,12 @@
 <style>
 :root { color-scheme: dark; }
 *{ box-sizing:border-box; margin:0; padding:0; }
+html{ height:100vh; overflow:hidden; }
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;
   background:#1a1a1a; color:#e8e8e8;
   max-width:100%; margin:0 auto;
-  height:100vh; height:-webkit-fill-available;
+  height:100vh;
   padding-bottom:48px; box-sizing:border-box;
   display:flex; flex-direction:column;
   overflow:hidden;
@@ -78,9 +79,10 @@ header{
 /* ── Calendar ── */
 .cal-wrap{
   touch-action:pan-y; user-select:none;
-  flex:1; display:flex; flex-direction:column;
+  flex:1 !important; display:flex; flex-direction:column;
   overflow:hidden;
-  transition:max-height 0.35s cubic-bezier(0.4,0,0.2,1);
+  max-height:none !important;
+  height:auto !important;
 }
 .weekdays{
   flex-shrink:0;
@@ -899,13 +901,8 @@ function render(){
     buildBars(document.getElementById('wb' + w2), wStart, wEnd);
   }
 
-  // 전체 높이 측정 후 max-height 고정 (컴팩트 전환 애니메이션 기준점)
-  var cw = document.getElementById('cal-wrap');
-  cw.style.maxHeight = '';
-  requestAnimationFrame(function(){
-    calFullH = cw.offsetHeight;
-    cw.style.maxHeight = calFullH + 'px';
-  });
+  // 인라인 max-height 잔재 제거 (이전 버전 캐시 대응)
+  document.getElementById('cal-wrap').style.maxHeight = '';
 }
 
 function buildBars(container, wStart, wEnd){
@@ -1443,8 +1440,14 @@ function generateIcs(){
 
 // ── iCal 가져오기 ─────────────────────────────────────────────────────────────
 function parseAndSaveIcal(txt, channel, room){
+  // 해당 채널+객실의 기존 데이터 전체 삭제 후 재등록
+  var toDelete = data.filter(function(b){ return b.channel===channel && b.room===room; });
+  toDelete.forEach(function(b){ deleteOne(b.id); });
+  data = data.filter(function(b){ return !(b.channel===channel && b.room===room); });
+
   var events = txt.split('BEGIN:VEVENT');
   var added = 0;
+
   for(var i=1; i<events.length; i++){
     var ev2 = events[i];
     var dtstart = (ev2.match(/DTSTART[^:]*:(\d{8})/) || [])[1];
@@ -1452,30 +1455,57 @@ function parseAndSaveIcal(txt, channel, room){
     var summary = (ev2.match(/SUMMARY:(.+)/)          || [])[1] || '';
     summary = summary.replace(/\r/g,'').trim();
     if(!dtstart || !dtend) continue;
+
+    var lowerSum = summary.toLowerCase();
+
+    // "CLOSED" = 다른 채널에서 막은 날짜 → 스킵 (우리 앱엔 원본 채널 데이터가 있음)
+    if(lowerSum === 'closed' || lowerSum === 'unavailable') continue;
+
     var ci = dtstart.slice(0,4)+'-'+dtstart.slice(4,6)+'-'+dtstart.slice(6,8);
     var co = dtend.slice(0,4)+'-'+dtend.slice(4,6)+'-'+dtend.slice(6,8);
-    // "Not available", "CLOSED", 빈 이름 → 채널명으로 대체
-    var lowerSum = summary.toLowerCase();
-    var cleanName = (!summary || lowerSum.indexOf('not available')!==-1 || lowerSum==='closed' || lowerSum.indexOf('airbnb')===0)
-      ? channel : summary;
-    var dup = false;
-    for(var j=0;j<data.length;j++){
-      if(data[j].channel===channel && data[j].checkin===ci && data[j].checkout===co){ dup=true; break; }
-    }
-    if(!dup){
-      var newIcal={id:'ic'+Date.now()+'_'+i, type:'booking', room:room||'1층',
-        channel:channel, checkin:ci, checkout:co,
-        guestName:cleanName, adults:2, children:0,
-        phone:'', amount:'', memo:'', userMemo:''};
-      data.push(newIcal);
-      upsertOne(newIcal);
-      added++;
-    }
+
+    // ── DESCRIPTION 파싱 (iCal 줄접힘 + 이스케이프 처리) ──────────────────
+    var descRaw = (ev2.match(/DESCRIPTION:([\s\S]*?)(?=\r?\n[A-Z][A-Z\-]*[;:])/) || [])[1] || '';
+    var desc = descRaw.replace(/\r?\n[ \t]/g,'').replace(/\\n/g,'\n').trim();
+
+    // 예약자명: Airbnb "SUMMARY: BumJin Jo (Reservation code:...)"
+    var descName = '', m;
+    m = desc.match(/SUMMARY:\s*(.+?)(?:\s*\(Reservation\s+code|\s*\(ID|\s*$)/im);
+    if(m) descName = m[1].trim();
+    // Booking.com "Guest name: ..."
+    if(!descName){ m = desc.match(/(?:Guest name|Guest):\s*(.+)/i); if(m) descName = m[1].trim(); }
+
+    // 전화번호
+    var descPhone = '';
+    m = desc.match(/PHONE:\s*(.+)/i); if(m) descPhone = m[1].trim();
+    if(!descPhone){ m = desc.match(/Phone:\s*(.+)/i); if(m) descPhone = m[1].trim(); }
+
+    // 인원
+    var descAdults = 2;
+    m = desc.match(/ADULT[S]?:\s*(\d+)/i); if(m) descAdults = Math.max(1, parseInt(m[1])||2);
+    var descChildren = 0;
+    m = desc.match(/CHILD(?:REN)?:\s*(\d+)/i); if(m) descChildren = parseInt(m[1])||0;
+
+    // 최종 이름 결정: DESCRIPTION 이름 > summary(실명인 경우) > 채널명
+    var isAnon = !summary || lowerSum.indexOf('not available')!==-1
+              || lowerSum==='reserved' || lowerSum.indexOf('airbnb')===0;
+    var finalName = descName || (!isAnon ? summary : '') || channel;
+
+    var newIcal = {
+      id:'ic'+Date.now()+'_'+i, type:'booking', room:room||'1층',
+      channel:channel, checkin:ci, checkout:co,
+      guestName:finalName, adults:descAdults, children:descChildren,
+      phone:descPhone, amount:'', memo:'', userMemo:''
+    };
+    data.push(newIcal);
+    upsertOne(newIcal);
+    added++;
   }
+
   save(); render(); renderStats();
   var st = document.getElementById('cfg-status');
   st.style.color = added>0 ? '#5a9030' : '#888';
-  st.textContent = added>0 ? added+'건 추가됐어요.' : '새 예약이 없어요. (중복 제외)';
+  st.textContent = added>0 ? added+'건 동기화됐어요.' : '가져온 일정이 없어요.';
 }
 
 function importIcalUrl(channel, room, silent){
