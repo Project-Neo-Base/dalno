@@ -150,19 +150,21 @@ header{
 .compact .bar{ height:4px !important; top:0 !important; border-radius:1px !important; padding:0 !important; }
 .compact .yr-bar{ padding:2px 0 !important; font-size:10px !important; }
 
-/* ── 하단 날짜 패널 ── */
+/* ── 하단 날짜 패널 (fixed 오버레이) ── */
 #day-panel{
-  flex:0 0 0px; min-height:0; height:0;
-  overflow:hidden;
-  background:#1a1a1a;
-  border-top:1px solid #272727;
-  opacity:0; pointer-events:none;
-  transition:opacity 0.25s ease 0.15s;
+  position:fixed; bottom:48px; left:0; right:0; z-index:86;
+  max-height:55vh;
+  background:#1e1e1e;
+  border-top:2px solid #2D5016;
+  border-radius:16px 16px 0 0;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+  transform:translateY(110%);
+  transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  pointer-events:none;
 }
 #day-panel.open{
-  flex:1; height:auto;
-  overflow-y:auto; -webkit-overflow-scrolling:touch;
-  opacity:1; pointer-events:auto;
+  transform:translateY(0);
+  pointer-events:auto;
 }
 .day-panel-inner{ padding:6px 16px 90px; }
 /* ── 월 통계 ── */
@@ -955,16 +957,14 @@ function buildBars(container, wStart, wEnd){
 function prevMo(){
   mo--; if(mo<1){mo=12;yr--;}
   selDate=null;
-  document.getElementById('cal-wrap').classList.remove('compact');
   document.getElementById('day-panel').classList.remove('open');
-  render();
+  render(); renderStats();
 }
 function nextMo(){
   mo++; if(mo>12){mo=1;yr++;}
   selDate=null;
-  document.getElementById('cal-wrap').classList.remove('compact');
   document.getElementById('day-panel').classList.remove('open');
-  render();
+  render(); renderStats();
 }
 
 function initSwipe(){
@@ -977,9 +977,8 @@ function initSwipe(){
       mo += dx<0?1:-1;
       if(mo>12){mo=1;yr++;} if(mo<1){mo=12;yr--;}
       selDate=null;
-      document.getElementById('cal-wrap').classList.remove('compact');
       document.getElementById('day-panel').classList.remove('open');
-      render();
+      render(); renderStats();
     }
   }, {passive:true});
 }
@@ -1025,19 +1024,11 @@ function openDay(ds){
   html += '<button class="btn-block-go" onclick="openBlock()">네이버 차단하러 가기</button>';
 
   document.getElementById('day-panel-inner').innerHTML = html;
-
-  var cw = document.getElementById('cal-wrap');
-  // 현재 실제 높이 → 컴팩트 전환 시작점 고정
-  cw.style.maxHeight = (calFullH || cw.scrollHeight) + 'px';
-  cw.classList.add('compact');
   document.getElementById('day-panel').classList.add('open');
 }
 
 function closeDay(){
   selDate = null;
-  var cw = document.getElementById('cal-wrap');
-  cw.classList.remove('compact');
-  cw.style.maxHeight = calFullH + 'px';
   document.getElementById('day-panel').classList.remove('open');
   render();
 }
