@@ -59,6 +59,7 @@ header{
 
 /* ── Year bar ── */
 .yr-bar{
+  flex-shrink:0;
   text-align:center; padding:5px 0 3px;
   font-size:11px; color:#555; background:#1a1a1a;
   letter-spacing:.5px;
@@ -66,6 +67,7 @@ header{
 
 /* ── Legend ── */
 .legend{
+  flex-shrink:0;
   display:flex; flex-wrap:wrap; gap:5px 12px;
   padding:7px 14px; background:#1f1f1f;
   border-bottom:1px solid #2a2a2a;
@@ -81,6 +83,7 @@ header{
   transition:max-height 0.35s cubic-bezier(0.4,0,0.2,1);
 }
 .weekdays{
+  flex-shrink:0;
   display:grid; grid-template-columns:repeat(7,1fr);
   background:#1f1f1f; border-bottom:1px solid #2a2a2a;
 }
@@ -90,6 +93,9 @@ header{
 }
 .weekdays div:first-child{ color:#c05060; }
 .weekdays div:last-child{ color:#4a7ec8; }
+
+/* ── cal-body ── */
+#cal-body{ flex:1; display:flex; flex-direction:column; }
 
 /* ── Week / Cell ── */
 .week{ flex:1; display:flex; flex-direction:column; border-bottom:1px solid #252525; }
@@ -931,9 +937,7 @@ function buildBars(container, wStart, wEnd){
   }
 
   var H=17, G=2, P=2;
-  var maxL = -1;
-  for(var k = 0; k < items.length; k++) if(items[k].lane > maxL) maxL = items[k].lane;
-  container.style.height = maxL >= 0 ? (P + (maxL+1)*(H+G)) + 'px' : '3px';
+  // 컨테이너 높이는 flex:1로 자동 확장 — 강제 지정 제거
 
   for(var n = 0; n < items.length; n++){
     var it2 = items[n], b2 = it2.b;
