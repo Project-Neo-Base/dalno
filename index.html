@@ -142,13 +142,20 @@ header{
 /* ── Bars ── */
 .week-bars{ flex:1; position:relative; overflow:hidden; min-height:3px; }
 .bar{
-  position:absolute; height:17px; border-radius:3px;
-  font-size:11px; line-height:17px;
+  position:absolute; height:19px; border-radius:3px;
+  font-size:13px; line-height:19px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   padding:0 4px; color:#fff; cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
 .bar:active{ filter:brightness(1.3); }
+.bar.cancelled{
+  background:#888 !important;
+  color:#eee;
+  text-decoration:line-through;
+  opacity:0.55;
+  border:1px dashed #555;
+}
 
 /* ── 컴팩트 모드 ── */
 .cal-wrap.compact{ flex:0 0 auto !important; max-height:220px !important; }
@@ -888,13 +895,21 @@ function toRow(b){
   return {id:b.id,type:b.type,room:b.room,channel:b.channel,
     checkin:b.checkin,checkout:b.checkout,guest_name:b.guestName||'',
     adults:b.adults||0,children:b.children||0,phone:b.phone||'',
-    amount:b.amount||'',memo:b.memo||'',user_memo:b.userMemo||''};
+    amount:b.amount||'',memo:b.memo||'',user_memo:b.userMemo||'',
+    status:b.status||'confirmed',
+    source:b.source||'manual',
+    cancelled_at:b.cancelledAt||null,
+    refund_amount:b.refundAmount||''};
 }
 function fromRow(r){
   return {id:r.id,type:r.type,room:r.room,channel:r.channel,
     checkin:r.checkin,checkout:r.checkout,guestName:r.guest_name||'',
     adults:r.adults||0,children:r.children||0,phone:r.phone||'',
-    amount:r.amount||'',memo:r.memo||'',userMemo:r.user_memo||''};
+    amount:r.amount||'',memo:r.memo||'',userMemo:r.user_memo||'',
+    status:r.status||'confirmed',
+    source:r.source||'manual',
+    cancelledAt:r.cancelled_at||null,
+    refundAmount:r.refund_amount||''};
 }
 function supaH(){
   return {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
@@ -995,6 +1010,7 @@ function buildBars(container, wStart, wEnd){
   var items = [];
   for(var i = 0; i < data.length; i++){
     var b = data[i];
+    if(b.status === 'cancelled') continue;
     if(b.checkin <= weStr && b.checkout > wsStr){
       var bS = new Date(b.checkin  + 'T00:00:00');
       var bE = new Date(b.checkout + 'T00:00:00');
@@ -1014,22 +1030,23 @@ function buildBars(container, wStart, wEnd){
     it.lane = l;
   }
 
-  var H=17, G=2, P=2;
+  var H=19, G=2, P=2;
   // 컨테이너 높이는 flex:1로 자동 확장 — 강제 지정 제거
 
   for(var n = 0; n < items.length; n++){
     var it2 = items[n], b2 = it2.b;
     var bar = document.createElement('div');
-    bar.className = 'bar';
+    var isCancelled = b2.status==='cancelled';
+    bar.className = 'bar' + (isCancelled ? ' cancelled' : '');
     var lPct = (it2.c1/7*100).toFixed(2);
     var wPct = ((it2.c2-it2.c1+1)/7*100).toFixed(2);
     bar.style.cssText = 'left:' + lPct + '%;width:calc(' + wPct + '% - 2px);'
       + 'top:' + (P + it2.lane*(H+G)) + 'px;'
       + 'background:' + (CH_COLOR[b2.channel]||'#555') + ';';
     var pax = b2.children > 0 ? b2.adults+','+b2.children : b2.adults;
-    bar.textContent = b2.type==='block'
+    bar.textContent = (isCancelled?'[취소] ':'') + (b2.type==='block'
       ? b2.room+' 차단'
-      : b2.room+' '+b2.guestName+' '+pax;
+      : b2.room+' '+b2.guestName+' '+pax);
     (function(c1, wS){ bar.onclick = function(e){ e.stopPropagation(); var d=new Date(+wS+c1*86400000); openDay(fmtD(d)); }; })(it2.c1, wStart);
     container.appendChild(bar);
   }
@@ -1080,7 +1097,7 @@ function openDay(ds){
   ['1층','2층'].forEach(function(room){
     var b = null;
     for(var i=0; i<data.length; i++){
-      if(data[i].room===room && data[i].checkin<=ds && ds<data[i].checkout){ b=data[i]; break; }
+      if(data[i].room===room && data[i].checkin<=ds && ds<data[i].checkout && data[i].status!=='cancelled'){ b=data[i]; break; }
     }
     html += '<div class="room-sec"><div class="room-lbl">' + ROOM_NAMES[room] + '</div>';
     if(b){
@@ -1125,6 +1142,7 @@ function renderStats(){
 
   data.forEach(function(b){
     if(b.type==='block') return;
+    if(b.status==='cancelled') return;
     if(!nights[b.channel]) return;
     var ci = new Date(b.checkin+'T00:00:00');
     var co = new Date(b.checkout+'T00:00:00');
@@ -1499,8 +1517,43 @@ function save(){
   syncToGist(true);
 }
 
+// ── Gist 동기화 상태 (우상단 점 + 세션 1회 alert) ─────────────────────────────
+var lastSyncStatus = 'unknown';   // 'ok' | 'fail' | 'no-token' | 'unknown'
+var _syncAlertShown = false;
+
+function showSyncBadge(){
+  var b = document.getElementById('sync-badge');
+  if(!b){
+    b = document.createElement('div');
+    b.id = 'sync-badge';
+    b.style.cssText = 'position:fixed;top:8px;right:8px;width:10px;height:10px;border-radius:50%;z-index:9999;pointer-events:none;box-shadow:0 0 4px rgba(0,0,0,.5)';
+    document.body.appendChild(b);
+  }
+  var colors = {ok:'#5a9030', fail:'#cf6679', 'no-token':'#888', unknown:'transparent'};
+  var titles = {ok:'Gist 동기화 정상', fail:'Gist 동기화 실패', 'no-token':'Gist 토큰 미설정', unknown:'Gist 상태 미확인'};
+  b.style.background = colors[lastSyncStatus] || 'transparent';
+  b.title = titles[lastSyncStatus] || '';
+}
+
+// silent 호출에서만 사용 — 명시적 동기화는 이미 gist-status에 표시됨
+function alertSyncFailure(reason){
+  if(_syncAlertShown) return;
+  _syncAlertShown = true;
+  setTimeout(function(){
+    alert('⚠ Gist 동기화 실패 (' + reason + ')\n\n' +
+          '예약 변경이 Gist에 반영되지 않았습니다.\n' +
+          'OTA(에어비/부킹)는 옛날 데이터를 계속 봅니다.\n\n' +
+          '설정에서 GitHub 토큰을 다시 확인해주세요.');
+  }, 100);
+}
+
 function syncToGist(silent){
-  if(!gistToken || !gistId) return;
+  if(!gistToken || !gistId){
+    lastSyncStatus = 'no-token';
+    showSyncBadge();
+    console.warn('[Gist] 토큰 미설정 — 동기화 건너뜀');
+    return;
+  }
   var ics2f = generateIcs('2층');
   var ics1f = generateIcs('1층');
   var st = document.getElementById('gist-status');
@@ -1513,10 +1566,43 @@ function syncToGist(silent){
       'dalno-1f.ics': { content: ics1f }
     }})
   }).then(function(r){
-    if(r.ok && st && !silent){ st.style.color='#5a9030'; st.textContent='동기화 완료 ✓'; }
-    else if(!r.ok && st && !silent){ st.style.color='#cf6679'; st.textContent='동기화 실패. 토큰을 확인해주세요.'; }
-  }).catch(function(){
-    if(st && !silent){ st.style.color='#cf6679'; st.textContent='네트워크 오류.'; }
+    if(r.ok){
+      lastSyncStatus = 'ok';
+      if(st && !silent){ st.style.color='#5a9030'; st.textContent='동기화 완료 ✓'; }
+    } else {
+      lastSyncStatus = 'fail';
+      console.error('[Gist] PATCH 실패 HTTP', r.status, '— 토큰 만료/권한 부족 가능');
+      if(st){ st.style.color='#cf6679'; st.textContent='동기화 실패 (HTTP '+r.status+'). 토큰을 확인해주세요.'; }
+      if(silent) alertSyncFailure('HTTP '+r.status);
+    }
+    showSyncBadge();
+  }).catch(function(err){
+    lastSyncStatus = 'fail';
+    console.error('[Gist] 네트워크 오류:', err);
+    if(st){ st.style.color='#cf6679'; st.textContent='네트워크 오류.'; }
+    if(silent) alertSyncFailure('네트워크 오류');
+    showSyncBadge();
+  });
+}
+
+// 앱 로드 시 토큰 유효성 1회 검증 (Gist GET)
+function validateGistOnLoad(){
+  if(!gistToken || !gistId){ lastSyncStatus='no-token'; showSyncBadge(); return; }
+  fetch('https://api.github.com/gists/' + gistId, {
+    headers: { 'Authorization': 'Bearer ' + gistToken }
+  }).then(function(r){
+    if(r.ok){
+      lastSyncStatus = 'ok';
+    } else {
+      lastSyncStatus = 'fail';
+      console.error('[Gist] 토큰 검증 실패 HTTP', r.status, '— 만료/권한 부족 가능');
+      alertSyncFailure('토큰 검증 HTTP '+r.status);
+    }
+    showSyncBadge();
+  }).catch(function(err){
+    lastSyncStatus = 'fail';
+    console.error('[Gist] 토큰 검증 네트워크 오류:', err);
+    showSyncBadge();
   });
 }
 
@@ -2008,6 +2094,8 @@ function fmtD(d){
     if(gu2f) gu2f.value='https://gist.githubusercontent.com/Project-Neo-Base/'+gistId+'/raw/dalno-2f.ics';
     var gu1f=document.getElementById('gist-url-1f');
     if(gu1f) gu1f.value='https://gist.githubusercontent.com/Project-Neo-Base/'+gistId+'/raw/dalno-1f.ics';
+    // 시작 시 Gist 토큰 유효성 1회 검증 (실패 시 우상단 빨간 점 + alert)
+    validateGistOnLoad();
     // URL 있으면 시작 시 즉시 fetch + 30분 자동 갱신
     if(icalUrls['booking-1']||icalUrls['booking-2']||icalUrls['airbnb-1']||icalUrls['airbnb-2']){
       autoRefreshAll();
