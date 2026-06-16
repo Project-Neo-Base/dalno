@@ -15,7 +15,7 @@
 html{ height:100vh; overflow:hidden; }
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;
-  background:#1a1a1a; color:#e8e8e8;
+  background:#000000; color:#e8e8e8;
   max-width:100%; margin:0 auto;
   height:100vh;
   padding-bottom:48px; box-sizing:border-box;
@@ -25,7 +25,7 @@ body{
 
 /* ── Header ── */
 header{
-  background:#1a1a1a;
+  background:#0a0a0a;
   padding:12px 14px 10px;
   flex-shrink:0;
   border-bottom:1px solid #2e2e2e;
@@ -87,11 +87,11 @@ header{
 .weekdays{
   flex-shrink:0;
   display:grid; grid-template-columns:repeat(7,1fr);
-  background:#1f1f1f; border-bottom:1px solid #2a2a2a;
+  background:#0a0a0a; border-bottom:1px solid #2a2a2a;
 }
 .weekdays div{
   text-align:center; padding:7px 0;
-  font-size:11px; font-weight:700; color:#666;
+  font-size:12px; font-weight:700; color:#888;
 }
 .weekdays div:first-child{ color:#c05060; }
 .weekdays div:last-child{ color:#4a7ec8; }
@@ -120,33 +120,39 @@ header{
 /* ── Date number ── */
 .dnum{
   display:inline-block;
-  font-size:14px; font-weight:500;
-  width:26px; height:26px;
-  line-height:26px; text-align:center;
+  font-size:18px; font-weight:700;
+  width:30px; height:30px;
+  line-height:30px; text-align:center;
   border-radius:50%;
-  color:#d8d8d8;
+  color:#ffffff;
 }
 /* 일요일·공휴일 = 빨강 */
-.dcell.red   .dnum { color:#d06070; }
+.dcell.red   .dnum { color:#e07080; }
 /* 토요일 = 파랑 */
-.dcell.sat   .dnum { color:#4a7ec8; }
+.dcell.sat   .dnum { color:#5a8edc; }
 /* 다른 달 = 어둡게 */
-.dcell.other .dnum { color:#383838; }
-/* 오늘 */
-.dcell.today .dnum { background:#2D5016; color:#c8e6a0; font-weight:700; }
+.dcell.other .dnum { color:#383838; font-weight:500; }
+/* 오늘 — 반전 (흰색 박스 + 검정 글씨) */
+.dcell.today .dnum {
+  background:#ffffff; color:#000000; font-weight:800;
+  border-radius:6px;
+}
 /* 선택 */
-.dcell.sel   .dnum { background:#3a6518; color:#fff; }
-/* 공휴일 + 오늘 우선 */
-.dcell.today.red .dnum { background:#8B1A2A; color:#ffaaaa; }
+.dcell.sel   .dnum { background:#3a6518; color:#fff; border-radius:6px; }
+/* 공휴일 + 오늘 우선 — 그래도 반전 유지 */
+.dcell.today.red .dnum { background:#ffffff; color:#000000; border-radius:6px; }
 
 /* ── Bars ── */
 .week-bars{ flex:1; position:relative; overflow:hidden; min-height:3px; }
 .bar{
-  position:absolute; height:19px; border-radius:3px;
-  font-size:13px; line-height:19px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  padding:0 4px; color:#fff; cursor:pointer;
+  position:absolute; border-radius:3px;
+  font-size:12px; line-height:1.25;
+  height:auto; min-height:18px; max-height:34px;
+  padding:1px 4px; color:#fff; cursor:pointer;
   -webkit-tap-highlight-color:transparent;
+  /* 2줄 줄바꿈 */
+  white-space:normal; word-break:break-all; overflow:hidden;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
 }
 .bar:active{ filter:brightness(1.3); }
 .bar.cancelled{
@@ -278,11 +284,12 @@ header{
   cursor:pointer; -webkit-tap-highlight-color:transparent;
 }
 .bcard:active{ background:#323232; }
-.bcard-top{ display:flex; align-items:center; gap:8px; margin-bottom:7px; }
-.bcard-badge{ padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; color:#fff; flex-shrink:0; }
-.bcard-name{ font-size:15px; font-weight:700; color:#e8e8e8; }
-.bcard-room{ font-size:12px; color:#666; }
-.bcard-meta{ font-size:12px; color:#888; line-height:1.8; }
+.bcard-top{ display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+.bcard-badge{ padding:5px 14px; border-radius:14px; font-size:22px; font-weight:700; color:#fff; flex-shrink:0; }
+.bcard-name{ font-size:30px; font-weight:700; color:#e8e8e8; }
+.bcard-pax{ font-size:26px; color:#aaa; font-weight:600; }
+.bcard-room{ font-size:24px; color:#888; }
+.bcard-meta{ font-size:24px; color:#999; line-height:1.5; }
 .btn-empty{
   width:100%; padding:15px; border:1.5px dashed #333;
   border-radius:12px; background:transparent;
@@ -878,7 +885,8 @@ var CH_ON = {'네이버':'on-n','부킹닷컴':'on-b','에어비앤비':'on-a','
 var DOW   = ['일','월','화','수','목','금','토'];
 
 // ── 상태 ─────────────────────────────────────────────────────────────────────
-var yr = 2026, mo = 5, selDate = null, calFullH = 0, editingId = null;
+var _today = new Date();
+var yr = _today.getFullYear(), mo = _today.getMonth()+1, selDate = null, calFullH = 0, editingId = null;
 var icalUrls = {'booking-1':'','booking-2':'','airbnb-1':'','airbnb-2':''};
 try{ var _u=JSON.parse(localStorage.getItem('dalno_ical')||'{}');
   ['booking-1','booking-2','airbnb-1','airbnb-2'].forEach(function(k){ icalUrls[k]=_u[k]||''; });
@@ -1030,7 +1038,7 @@ function buildBars(container, wStart, wEnd){
     it.lane = l;
   }
 
-  var H=19, G=2, P=2;
+  var H=36, G=2, P=2;
   // 컨테이너 높이는 flex:1로 자동 확장 — 강제 지정 제거
 
   for(var n = 0; n < items.length; n++){
@@ -1110,9 +1118,10 @@ function openDay(ds){
             + '<div class="bcard-top">'
             + '<span class="bcard-badge" style="background:'+col+'">'+label+'</span>'
             + '<span class="bcard-name">'+name+'</span>'
+            + (b.type!=='block'?'<span class="bcard-pax">'+pax+'</span>':'')
             + '</div>'
             + '<div class="bcard-meta">'+b.checkin+' ~ '+b.checkout
-            + (b.type!=='block'?' ('+nights+'박)<br>'+pax:'')
+            + (b.type!=='block'?' ('+nights+'박)':'')
             + '</div></div>';
     } else {
       html += '<button class="btn-empty" onclick="openAddRoom(\''+room+'\',\''+ds+'\')">예약없음 — 탭하여 입력</button>';
