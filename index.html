@@ -1653,6 +1653,13 @@ function generateIcs(room){
 
 // ── iCal 가져오기 ─────────────────────────────────────────────────────────────
 function parseAndSaveIcal(txt, channel, room){
+  // iCal엔 실명이 없어 재임포트마다 코드로 덮이므로, 기존 실명(코드 아님)을 날짜기준으로 보존
+  var preserveName = {};
+  data.filter(function(b){ return b.channel===channel && b.room===room; }).forEach(function(b){
+    var gn = (b.guestName||'').trim();
+    var isCode = /^HM[A-Z0-9]{8}$/.test(gn) || /^\d{6,}$/.test(gn) || gn===channel || gn==='';
+    if(!isCode){ preserveName[b.checkin+'_'+b.checkout] = {guestName:gn, adults:b.adults, children:b.children, amount:b.amount, phone:b.phone}; }
+  });
   // 해당 채널+객실의 기존 데이터 전체 삭제 후 재등록
   var toDelete = data.filter(function(b){ return b.channel===channel && b.room===room; });
   toDelete.forEach(function(b){ deleteOne(b.id); });
@@ -1714,11 +1721,22 @@ function parseAndSaveIcal(txt, channel, room){
     var isAnon = lowerSum === 'reserved' || lowerSum.indexOf('airbnb') === 0;
     var finalName = descName || (!isAnon ? summary : '') || (descCode ? descCode : channel);
 
+    // 기존 실명 보존: 같은 날짜(체크인+체크아웃)에 저장돼 있던 실명이 있으면 코드 대신 유지
+    var useAdults = descAdults, useChildren = descChildren, usePhone = descPhone, useAmount = '';
+    var pv = preserveName[ci+'_'+co];
+    if(pv){
+      finalName = pv.guestName;
+      if(pv.adults)   useAdults   = pv.adults;
+      if(pv.children) useChildren = pv.children;
+      if(pv.phone)    usePhone    = pv.phone;
+      if(pv.amount)   useAmount   = pv.amount;
+    }
+
     var newIcal = {
       id:'ic'+Date.now()+'_'+i, type:'booking', room:room||'1층',
       channel:channel, checkin:ci, checkout:co,
-      guestName:finalName, adults:descAdults, children:descChildren,
-      phone:descPhone, amount:'', memo:'', userMemo:''
+      guestName:finalName, adults:useAdults, children:useChildren,
+      phone:usePhone, amount:useAmount, memo:'', userMemo:''
     };
     data.push(newIcal);
     upsertOne(newIcal);
