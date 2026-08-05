@@ -26,50 +26,51 @@ body{
 /* ── Header ── */
 header{
   background:#0a0a0a;
-  padding:8px 14px 6px;
+  padding:12px 14px 10px;
   flex-shrink:0;
   border-bottom:1px solid #2e2e2e;
 }
 .hd-row{ display:flex; align-items:stretch; gap:10px; }
 .btn-gear{
   border:1.5px solid #2D5016; border-radius:8px;
-  background:none; color:#6a9a40; font-size:16px;
+  background:none; color:#6a9a40; font-size:20px;
   display:flex; align-items:center; justify-content:center;
-  padding:0 9px; cursor:pointer; flex-shrink:0;
+  padding:0 10px; cursor:pointer; flex-shrink:0;
   -webkit-tap-highlight-color:transparent;
 }
 .btn-gear:active{ background:#1e2e10; color:#c8e6a0; }
 .hd-title{
   flex:1; border:1.5px solid #2D5016;
-  border-radius:8px; padding:6px 13px;
+  border-radius:8px; padding:9px 13px;
 }
-.hd-name{ font-size:14px; font-weight:700; color:#c8e6a0; line-height:1.25; }
+.hd-name{ font-size:14px; font-weight:700; color:#c8e6a0; line-height:1.45; }
 .hd-sub { font-size:10px; color:#6a9a40; margin-top:2px; letter-spacing:.5px; }
 .hd-month{
   border:1.5px solid #2D5016; border-radius:8px;
   display:flex; align-items:center; justify-content:space-between;
-  padding:4px 8px; min-width:84px; gap:4px;
+  padding:6px 8px; min-width:90px; gap:4px;
 }
 .hd-mo-arr{
   background:none; border:none; color:#6a9a40;
-  font-size:15px; cursor:pointer; padding:0 4px; line-height:1;
+  font-size:18px; cursor:pointer; padding:0 2px; line-height:1;
   -webkit-tap-highlight-color:transparent;
 }
 .hd-mo-arr:active{ color:#c8e6a0; }
-#hd-mo-num{ font-size:16px; font-weight:800; color:#c8e6a0; line-height:1; }
+#hd-mo-num{ font-size:30px; font-weight:800; color:#c8e6a0; line-height:1; }
 
 /* ── Year bar ── */
 .yr-bar{
-  margin-left:auto; align-self:center;
-  font-size:11px; color:#999; font-weight:600;
+  flex-shrink:0;
+  text-align:center; padding:5px 0 3px;
+  font-size:11px; color:#555; background:#1a1a1a;
   letter-spacing:.5px;
 }
 
 /* ── Legend ── */
 .legend{
   flex-shrink:0;
-  display:flex; flex-wrap:wrap; gap:4px 12px;
-  padding:4px 14px; background:#1f1f1f;
+  display:flex; flex-wrap:wrap; gap:5px 12px;
+  padding:7px 14px; background:#1f1f1f;
   border-bottom:1px solid #2a2a2a;
 }
 .leg{ display:flex; align-items:center; gap:4px; font-size:10px; color:#888; }
@@ -89,7 +90,7 @@ header{
   background:#0a0a0a; border-bottom:1px solid #2a2a2a;
 }
 .weekdays div{
-  text-align:center; padding:4px 0;
+  text-align:center; padding:7px 0;
   font-size:12px; font-weight:700; color:#888;
 }
 .weekdays div:first-child{ color:#c05060; }
@@ -129,8 +130,9 @@ header{
 .dcell.red   .dnum { color:#e07080; }
 /* 토요일 = 파랑 */
 .dcell.sat   .dnum { color:#5a8edc; }
-/* 다른 달 = 어둡게 */
-.dcell.other .dnum { color:#383838; font-weight:500; }
+/* 다른 달 = 셀 배경·숫자 톤다운 (네이버 캘린더 방식) */
+.dcell.other { background:#0a0a0a; }
+.dcell.other .dnum { color:#4a4a4a; font-weight:500; }
 /* 오늘 — 반전 (흰색 박스 + 검정 글씨) */
 .dcell.today .dnum {
   background:#ffffff; color:#000000; font-weight:800;
@@ -570,6 +572,7 @@ textarea.fi{ resize:none; min-height:50px; }
   <div class="hd-row">
     <div class="hd-title">
       <div class="hd-name">한옥스테이 달과노니는집</div>
+      <div class="hd-sub">Stay Daln o</div>
     </div>
     <div class="hd-month">
       <button class="hd-mo-arr" onclick="prevMo()">&#8249;</button>
@@ -586,10 +589,10 @@ textarea.fi{ resize:none; min-height:50px; }
   <div class="leg"><div class="leg-dot" style="background:#821a2c"></div>에어비앤비</div>
   <div class="leg"><div class="leg-dot" style="background:#573e00"></div>이체</div>
   <div class="leg"><div class="leg-dot" style="background:#363636"></div>차단</div>
-  <div class="yr-bar" id="yr-bar"></div>
 </div>
 
 <div class="cal-wrap" id="cal-wrap">
+  <div class="yr-bar" id="yr-bar"></div>
   <div class="weekdays">
     <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
   </div>
@@ -1651,13 +1654,6 @@ function generateIcs(room){
 
 // ── iCal 가져오기 ─────────────────────────────────────────────────────────────
 function parseAndSaveIcal(txt, channel, room){
-  // iCal엔 실명이 없어 재임포트마다 코드로 덮이므로, 기존 실명(코드 아님)을 날짜기준으로 보존
-  var preserveName = {};
-  data.filter(function(b){ return b.channel===channel && b.room===room; }).forEach(function(b){
-    var gn = (b.guestName||'').trim();
-    var isCode = /^HM[A-Z0-9]{8}$/.test(gn) || /^\d{6,}$/.test(gn) || gn===channel || gn==='';
-    if(!isCode){ preserveName[b.checkin+'_'+b.checkout] = {guestName:gn, adults:b.adults, children:b.children, amount:b.amount, phone:b.phone}; }
-  });
   // 해당 채널+객실의 기존 데이터 전체 삭제 후 재등록
   var toDelete = data.filter(function(b){ return b.channel===channel && b.room===room; });
   toDelete.forEach(function(b){ deleteOne(b.id); });
@@ -1719,22 +1715,11 @@ function parseAndSaveIcal(txt, channel, room){
     var isAnon = lowerSum === 'reserved' || lowerSum.indexOf('airbnb') === 0;
     var finalName = descName || (!isAnon ? summary : '') || (descCode ? descCode : channel);
 
-    // 기존 실명 보존: 같은 날짜(체크인+체크아웃)에 저장돼 있던 실명이 있으면 코드 대신 유지
-    var useAdults = descAdults, useChildren = descChildren, usePhone = descPhone, useAmount = '';
-    var pv = preserveName[ci+'_'+co];
-    if(pv){
-      finalName = pv.guestName;
-      if(pv.adults)   useAdults   = pv.adults;
-      if(pv.children) useChildren = pv.children;
-      if(pv.phone)    usePhone    = pv.phone;
-      if(pv.amount)   useAmount   = pv.amount;
-    }
-
     var newIcal = {
       id:'ic'+Date.now()+'_'+i, type:'booking', room:room||'1층',
       channel:channel, checkin:ci, checkout:co,
-      guestName:finalName, adults:useAdults, children:useChildren,
-      phone:usePhone, amount:useAmount, memo:'', userMemo:''
+      guestName:finalName, adults:descAdults, children:descChildren,
+      phone:descPhone, amount:'', memo:'', userMemo:''
     };
     data.push(newIcal);
     upsertOne(newIcal);
