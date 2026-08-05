@@ -130,8 +130,7 @@ header{
 .dcell.red   .dnum { color:#e07080; }
 /* 토요일 = 파랑 */
 .dcell.sat   .dnum { color:#5a8edc; }
-/* 다른 달 = 셀 배경·숫자 톤다운 (네이버 캘린더 방식) */
-.dcell.other { background:#0a0a0a; }
+/* 다른 달 = 숫자만 톤다운 (셀 배경은 그대로, 예약 바는 아래 .bar.other-month) */
 .dcell.other .dnum { color:#4a4a4a; font-weight:500; }
 /* 오늘 — 반전 (흰색 박스 + 검정 글씨) */
 .dcell.today .dnum {
@@ -163,6 +162,8 @@ header{
   opacity:0.55;
   border:1px dashed #555;
 }
+/* 다른 달에만 걸린 예약 = 흐리게 (배경·글자 함께) */
+.bar.other-month{ opacity:0.32; }
 
 /* ── 컴팩트 모드 ── */
 .cal-wrap.compact{ flex:0 0 auto !important; max-height:220px !important; }
@@ -1046,7 +1047,13 @@ function buildBars(container, wStart, wEnd){
     var it2 = items[n], b2 = it2.b;
     var bar = document.createElement('div');
     var isCancelled = b2.status==='cancelled';
-    bar.className = 'bar' + (isCancelled ? ' cancelled' : '');
+    // 이 예약이 현재 뷰 달(mo/yr)의 셀에 하나라도 걸치면 정상, 아니면 흐리게
+    var inCur = false;
+    for(var k = it2.c1; k <= it2.c2; k++){
+      var cd = new Date(+wStart + k*86400000);
+      if(cd.getFullYear() === yr && (cd.getMonth()+1) === mo){ inCur = true; break; }
+    }
+    bar.className = 'bar' + (isCancelled?' cancelled':'') + (inCur?'':' other-month');
     var lPct = (it2.c1/7*100).toFixed(2);
     var wPct = ((it2.c2-it2.c1+1)/7*100).toFixed(2);
     bar.style.cssText = 'left:' + lPct + '%;width:calc(' + wPct + '% - 2px);'
