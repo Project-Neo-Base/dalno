@@ -943,6 +943,8 @@ function loadFromSupabase(cb){
     if(Array.isArray(rows)){
       data = rows.map(fromRow);
       try{ localStorage.setItem('dalno_v1',JSON.stringify(data)); }catch(e){}
+      // 앱 로드 시 자동 Gist 동기화 (외부에서 유입된 새 예약 반영)
+      try{ syncToGist(true); }catch(e){}
     }
     if(cb) cb();
   })
@@ -1646,6 +1648,8 @@ function generateIcs(room){
   var lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//StayDalno//KR','CALSCALE:GREGORIAN'];
   data.forEach(function(b){
     if(room && b.room !== room) return;
+    // 취소된 예약은 iCal에서 제외 (OTA에 잘못 차단으로 나가는 것 방지)
+    if(b.status === 'cancelled') return;
     var ci=b.checkin.replace(/-/g,''), co=b.checkout.replace(/-/g,'');
     lines.push('BEGIN:VEVENT');
     lines.push('UID:'+b.id+'@staydalno');
@@ -2093,7 +2097,12 @@ function autoRefreshAll(){
 
 function startAutoRefresh(){
   if(autoRefreshTimer) clearInterval(autoRefreshTimer);
-  autoRefreshTimer = setInterval(autoRefreshAll, 30 * 60 * 1000); // 30분
+  autoRefreshTimer = setInterval(function(){
+    autoRefreshAll();
+    // iCal 폴링(16초 소요) 완료 후 Supabase 재로드 → syncToGist 자동
+    // 외부 유입(n8n webhook · 수동 UPDATE)이 있어도 앱만 켜놓으면 30분 내 Gist 반영
+    setTimeout(function(){ loadFromSupabase(function(){}); }, 20000);
+  }, 30 * 60 * 1000); // 30분
 }
 
 // ── iCal 내보내기 ─────────────────────────────────────────────────────────────
