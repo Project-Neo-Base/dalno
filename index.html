@@ -1315,7 +1315,7 @@ function openDet(id){
         + '</div>'
         + '<div class="det-btns">'
         + (b.channel==='부킹닷컴'||b.channel==='에어비앤비'
-            ? '<span class="det-readonly">iCal 읽기 전용</span>'
+            ? '<button class="btn-edit" onclick="openEdit(\''+b.id+'\')">수정</button>'
             : '<button class="btn-del" onclick="delBook(\''+b.id+'\')">삭제</button>'
             + '<button class="btn-edit" onclick="openEdit(\''+b.id+'\')">수정</button>')
         + '<button class="btn-save" onclick="saveMemo(\''+b.id+'\')">정보추가</button>'
