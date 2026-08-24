@@ -1756,8 +1756,12 @@ function parseAndSaveIcal(txt, channel, room){
   });
 
   // 기존 중 iCal에 없는 것 = 취소된 예약 → 삭제
+  // 단, 지난 예약(checkout <= 오늘)은 유지 — 에어비 iCal이 미래만 반환하는 특성 때문
+  var _today = new Date().toISOString().slice(0,10);
   existing.forEach(function(b){
     if(!matched[b.id]){
+      // 지난 예약(이용완료)이면 유지 (iCal에 없다고 삭제 X)
+      if(b.checkout && b.checkout <= _today) return;
       deleteOne(b.id);
       var idx = data.findIndex(function(x){ return x.id===b.id; });
       if(idx>=0) data.splice(idx,1);
