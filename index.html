@@ -59,18 +59,19 @@ header{
 #hd-mo-num{ font-size:30px; font-weight:800; color:#c8e6a0; line-height:1; }
 
 /* ── Year bar ── */
-.yr-bar{
-  flex-shrink:0;
-  text-align:center; padding:5px 0 3px;
-  font-size:11px; color:#555; background:#1a1a1a;
-  letter-spacing:.5px;
+/* 「2026년 10월」 줄 — 헤더에 이미 ‹ 10 › 가 있어 중복이라 숨긴다.
+   년도는 헤더 월 표시 옆에 작게 붙였다(.hd-yr). 23px 을 달력에 돌려준다. */
+.yr-bar{ display:none; }
+.hd-yr{
+  font-size:9px; color:#6a9a40; letter-spacing:.2px;
+  align-self:flex-end; padding-bottom:4px;
 }
 
 /* ── Legend ── */
 .legend{
   flex-shrink:0;
   display:flex; flex-wrap:wrap; gap:5px 12px;
-  padding:7px 14px; background:#1f1f1f;
+  padding:4px 14px; background:#1f1f1f;
   border-bottom:1px solid #2a2a2a;
 }
 .leg{ display:flex; align-items:center; gap:4px; font-size:10px; color:#888; }
@@ -90,7 +91,7 @@ header{
   background:#0a0a0a; border-bottom:1px solid #2a2a2a;
 }
 .weekdays div{
-  text-align:center; padding:7px 0;
+  text-align:center; padding:2px 0;
   font-size:12px; font-weight:700; color:#888;
 }
 .weekdays div:first-child{ color:#c05060; }
@@ -100,7 +101,9 @@ header{
 #cal-body{ flex:1; display:flex; flex-direction:column; }
 
 /* ── Week / Cell ── */
-.week{ flex:1; display:flex; flex-direction:column; border-bottom:1px solid #252525; }
+/* 주 높이를 내용 기준으로 고정한다. flex:1 이면 화면 크기에 따라 늘었다 줄었다 해서
+   좁은 폰에서는 막대가 잘리고, 넓은 화면에서는 칸 아래 빈 줄이 생겼다. (2026-10-12) */
+.week{ flex:0 0 auto; display:flex; flex-direction:column; border-bottom:1px solid #252525; }
 .week-dates{
   display:grid; grid-template-columns:repeat(7,1fr);
   width:100%; flex-shrink:0;
@@ -143,12 +146,15 @@ header{
 .dcell.today.red .dnum { background:#ffffff; color:#000000; border-radius:6px; }
 
 /* ── Bars ── */
-.week-bars{ flex:1; position:relative; overflow:hidden; min-height:3px; }
+/* 2 + 26(1층) + 2 + 26(2층) = 56px. 딱 4줄, 5번째 줄 없음 */
+.week-bars{ flex:0 0 56px; height:56px; position:relative; overflow:hidden; }
 .bar{
   position:absolute; border-radius:3px;
-  font-size:12px; line-height:1.25;
-  height:auto; min-height:18px; max-height:34px;
-  padding:1px 4px; color:#fff; cursor:pointer;
+  /* 두 줄 고정 (13px × 2 = 26px). 짧으면 한 줄만 쓰고 둘째 줄은 빈 채로 둔다.
+     높이를 고정해야 층별 자리(1층 위 2줄 / 2층 아래 2줄)가 어긋나지 않는다. */
+  font-size:11px; line-height:13px;
+  height:26px; min-height:26px; max-height:26px;
+  padding:0 4px; color:#fff; cursor:pointer;
   -webkit-tap-highlight-color:transparent;
   /* 2줄 줄바꿈 */
   white-space:normal; word-break:break-all; overflow:hidden;
@@ -578,6 +584,7 @@ textarea.fi{ resize:none; min-height:50px; }
       <button class="hd-mo-arr" onclick="prevMo()">&#8249;</button>
       <span id="hd-mo-num">5</span>
       <button class="hd-mo-arr" onclick="nextMo()">&#8250;</button>
+      <span class="hd-yr" id="hd-yr"></span>
     </div>
     <button class="btn-gear" onclick="openOv('ov-cfg')">⚙</button>
   </div>
@@ -957,7 +964,8 @@ var fs = {room:'1층',ch:'네이버',adults:2,children:0,broom:'1층'};
 // ── 렌더 ──────────────────────────────────────────────────────────────────────
 function render(){
   document.getElementById('hd-mo-num').textContent = mo;
-  document.getElementById('yr-bar').textContent    = yr + '년 ' + mo + '월';
+  document.getElementById('hd-yr').textContent     = yr;      // 헤더 월 표시 옆 작은 년도
+  document.getElementById('yr-bar').textContent    = yr + '년 ' + mo + '월';  // 숨김 상태 (CSS)
 
   var fd   = new Date(yr, mo-1, 1).getDay();
   var dim  = new Date(yr, mo, 0).getDate();
@@ -1032,20 +1040,26 @@ function buildBars(container, wStart, wEnd){
   }
   items.sort(function(a,b){ return a.c1-b.c1 || a.b.room.localeCompare(b.b.room); });
 
-  var lanes = [];
+  // ── 층별 자리 고정 (2026-10-12) ─────────────────────────────────────────
+  // 한 칸은 4줄: 위 2줄 = 1층, 아래 2줄 = 2층.
+  // 막대 하나가 두 줄까지 쓰고(길면 말줄임), 짧으면 한 줄만 쓰고 나머지는 빈 채로 둔다.
+  // 객실이 층마다 하나뿐이라 하루에 층당 예약은 하나다.
+  // 예전에는 빈 자리에 아무나 넣어서(먼저 온 순) 1층 예약 둘이 2층 자리를 먹었다.
+  var slotEnd = [-1, -1];                       // 0 = 1층 자리, 1 = 2층 자리
   for(var j = 0; j < items.length; j++){
     var it = items[j];
-    var l = 0;
-    while(l < lanes.length && lanes[l] >= it.c1) l++;
-    lanes[l] = it.c2;
-    it.lane = l;
+    var s  = (it.b.room === '1층') ? 0 : 1;
+    if(slotEnd[s] >= it.c1){ it.lane = -1; continue; }   // 그 층이 이미 차 있으면 안 그린다
+    slotEnd[s] = it.c2;
+    it.lane = s;
   }
 
-  var H=36, G=2, P=2;
-  // 컨테이너 높이는 flex:1로 자동 확장 — 강제 지정 제거
+  var H=26, G=2, P=2;                           // 막대 두 줄(13px×2) + 간격
+  // 막대영역은 CSS 에서 56px 고정 (2 + 26 + 2 + 26) — 5번째 줄이 생기지 않는다
 
   for(var n = 0; n < items.length; n++){
     var it2 = items[n], b2 = it2.b;
+    if(it2.lane < 0) continue;                  // 그 층 자리가 없어 잘린 건
     var bar = document.createElement('div');
     var isCancelled = b2.status==='cancelled';
     // 이 예약이 현재 뷰 달(mo/yr)의 셀에 하나라도 걸치면 정상, 아니면 흐리게
