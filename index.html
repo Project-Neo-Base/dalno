@@ -496,10 +496,15 @@ textarea.fi{ resize:none; min-height:50px; }
   cursor:pointer; z-index:90;
   display:flex; align-items:center; justify-content:center;
   -webkit-tap-highlight-color:transparent;
+  /* 달력을 가리지 않게 반투명. 누를 때는 또렷해진다 (2026-10-13) */
+  opacity:.65; transition:opacity .15s;
 }
-.fab:active{ background:#3a6520; transform:scale(.93); }
+.fab:active{ background:#3a6520; transform:scale(.93); opacity:1; }
+/* ➕ 왼쪽에 나란히 둔다 (2026-10-12). 예전엔 ➕ 위에 쌓여 있어
+   달력 오른쪽 아래를 세로로 두 칸이나 가렸다.
+   ➕ 가 bottom 60 / 52px 이므로 중심 86 → 46px 짜리는 bottom 63 에서 가운데가 맞는다. */
 .fab-paste{
-  position:fixed; bottom:120px; right:16px;
+  position:fixed; bottom:63px; right:78px;
   width:46px; height:46px; border-radius:50%;
   background:#1a3a2a; border:1.5px solid #2D5016;
   color:#c8e6a0; font-size:20px; line-height:1;
@@ -507,8 +512,9 @@ textarea.fi{ resize:none; min-height:50px; }
   cursor:pointer; z-index:90;
   display:flex; align-items:center; justify-content:center;
   -webkit-tap-highlight-color:transparent;
+  opacity:.65; transition:opacity .15s;
 }
-.fab-paste:active{ background:#2D5016; transform:scale(.93); }
+.fab-paste:active{ background:#2D5016; transform:scale(.93); opacity:1; }
 /* 붙여넣기 파서 */
 #paste-modal{ max-width:480px; }
 .paste-textarea{
